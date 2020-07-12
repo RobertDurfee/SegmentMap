@@ -235,7 +235,6 @@ mod tests {
 
     #[test]
     fn test_remove() {
-
         let permutations = vec![(
                 format!("{}\n{}\n{}\n{}\n{}\n",
                     "  [0----)",
@@ -281,10 +280,7 @@ mod tests {
                 vec![2, 1, 0]
             )
         ];
-
-        let cases = vec![
-
-            (
+        let cases = vec![(
                 format!("{}\n{}\n{}\n",
                     "  [-----------------)",
                     "                      -> -------------------",
@@ -297,9 +293,7 @@ mod tests {
                     (Interval::new(12, 18), 2)
                 ],
                 vec![],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  [--------------)---",
                     "                      -> ---------------[2-)",
@@ -314,9 +308,7 @@ mod tests {
                 vec![
                     (Interval::new(15, 18), 2)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  [-----------)------",
                     "                      -> ------------[2----)",
@@ -331,9 +323,7 @@ mod tests {
                 vec![
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  [--------)---------",
                     "                      -> ---------[1-|2----)",
@@ -349,9 +339,7 @@ mod tests {
                     (Interval::new(9, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  [-----)------------",
                     "                      -> ------[1----|2----)",
@@ -367,9 +355,7 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  [--)---------------",
                     "                      -> ---[0-|1----|2----)",
@@ -386,9 +372,7 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  |------------------",
                     "                      -> [0----|1----|2----)",
@@ -405,9 +389,7 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  ---[--------------)",
                     "                      -> [0-)---------------",
@@ -422,9 +404,7 @@ mod tests {
                 vec![
                     (Interval::new(0, 3), 0)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  ---[-----------)---",
                     "                      -> [0-)-----------[2-)",
@@ -440,9 +420,7 @@ mod tests {
                     (Interval::new(0, 3), 0),
                     (Interval::new(15, 18), 2)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  ---[--------)------",
                     "                      -> [0-)--------[2----)",
@@ -458,9 +436,7 @@ mod tests {
                     (Interval::new(0, 3), 0),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  ---[-----)---------",
                     "                      -> [0-)-----[1-|2----)",
@@ -477,9 +453,7 @@ mod tests {
                     (Interval::new(9, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  ---[--)------------",
                     "                      -> [0-)--[1----|2----)",
@@ -496,9 +470,7 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  --[-)--------------",
                     "                      -> [0)-[0|1----|2----)",
@@ -516,9 +488,7 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  ---|---------------",
                     "                      -> [0----|1----|2----)",
@@ -535,9 +505,7 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  ------[-----------)",
                     "                      -> [0----)------------",
@@ -552,9 +520,7 @@ mod tests {
                 vec![
                     (Interval::new(0, 6), 0)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  ------[--------)---",
                     "                      -> [0----)--------[2-)",
@@ -570,9 +536,7 @@ mod tests {
                     (Interval::new(0, 6), 0),
                     (Interval::new(15, 18), 2)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  ------[-----)------",
                     "                      -> [0----)-----[2----)",
@@ -588,9 +552,7 @@ mod tests {
                     (Interval::new(0, 6), 0),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  ------[--)---------",
                     "                      -> [0----)--[1-|2----)",
@@ -607,9 +569,7 @@ mod tests {
                     (Interval::new(9, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            (
+            ), (
                 format!("{}\n{}\n{}\n",
                     "  ------|------------",
                     "                      -> [0----|1----|2----)",
@@ -629,7 +589,6 @@ mod tests {
             ),
 
         ];
-
         for (case_description, remove_interval, insert_intervals, expected_intervals) in cases {
             for (permutation_description, indices) in &permutations {
                 let mut interval_map = IntervalMap::new();
@@ -645,7 +604,6 @@ mod tests {
 
     #[test]
     fn test_update() {
-
         let permutations = vec![
             vec![
             ], vec![(
@@ -715,7 +673,6 @@ mod tests {
                 )
             ]
         ];
-
         let cases = vec![(
                 format!("{}\n{}\n{}\n",
                     "  [3----------------)",
@@ -1366,7 +1323,6 @@ mod tests {
                 ],
             ),
         ];
-
         for (case_description, update_interval, insert_intervals, expected_intervals) in cases {
             for (permutation_description, indices) in &permutations[insert_intervals.len()] {
                 let mut interval_map = IntervalMap::new();
@@ -1376,6 +1332,660 @@ mod tests {
                 }
                 let (update_interval, update_value) = update_interval;
                 interval_map.update(&update_interval, |_| Some(update_value));
+                assert_eq!(expected_intervals, interval_map.into_iter().collect::<Vec<_>>(), "\npermutation:\n\n{}\ncase:\n\n{}\n", permutation_description, case_description);
+            }
+        }
+    }
+
+    #[test]
+    fn test_update_remove() {
+        let permutations = vec![
+            vec![
+            ], vec![(
+                    format!("{}\n",
+                        "  [0----)"
+                    ),
+                    vec![0]
+                )
+            ], vec![(
+                    format!("{}\n{}\n{}\n",
+                        "  [0----)",
+                        "       \\",
+                        "      [1----)"
+                    ),
+                    vec![0, 1]
+                ), (
+                    format!("{}\n{}\n{}\n",
+                        "      [1----)",
+                        "       /",
+                        "  [0----)"
+                    ),
+                    vec![1, 0]
+                )
+            ], vec![(
+                    format!("{}\n{}\n{}\n{}\n{}\n",
+                        "  [0----)",
+                        "       \\",
+                        "      [1----)",
+                        "           \\",
+                        "          [2----)"
+                    ),
+                    vec![0, 1, 2]
+                ), (
+                    format!("{}\n{}\n{}\n{}\n{}\n",
+                        "  [0----)",
+                        "       \\",
+                        "      [2----)",
+                        "       /",
+                        "  [1----)"
+                    ),
+                    vec![0, 2, 1]
+                ), (
+                    format!("{}\n{}\n{}\n",
+                        "      [1----)",
+                        "       /   \\",
+                        "  [0----) [2----)",
+                    ),
+                    vec![1, 0, 2]
+                ), (
+                    format!("{}\n{}\n{}\n{}\n{}\n",
+                        "      [2----)",
+                        "       /",
+                        "  [0----)",
+                        "       \\",
+                        "      [1----)"
+                    ),
+                    vec![2, 0, 1]
+                ), (
+                    format!("{}\n{}\n{}\n{}\n{}\n",
+                        "          [2----)",
+                        "           /",
+                        "      [1----)",
+                        "       /",
+                        "  [0----)"
+                    ),
+                    vec![2, 1, 0]
+                )
+            ]
+        ];
+        let cases = vec![(
+                format!("{}\n{}\n{}\n",
+                    "  [-----------------)",
+                    "                      -> -------------------",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(0, 18),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [--------------)---",
+                    "                      -> ---------------[2-)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(0, 15),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(15, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [-----------)------",
+                    "                      -> ------------[2----)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(0, 12),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [--------)---------",
+                    "                      -> ---------[1-|2----)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(0, 9),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(9, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [-----)------------",
+                    "                      -> ------[1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(0, 6),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [--)---------------",
+                    "                      -> ---[0-|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(0, 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(3, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  |------------------",
+                    "                      -> [0----|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(0, 0),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[--------------)",
+                    "                      -> [0-)---------------",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(3, 18),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[-----------)---",
+                    "                      -> [0-)-----------[2-)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(3, 15),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(15, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[--------)------",
+                    "                      -> [0-)--------[2----)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(3, 12),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[-----)---------",
+                    "                      -> [0-)-----[1-|2----)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(3, 9),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(9, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[--)------------",
+                    "                      -> [0-)--[1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(3, 6),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  --[-)--------------",
+                    "                      -> [0)-[0|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(2, 4),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 2), 0),
+                    (Interval::new(4, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---|---------------",
+                    "                      -> [0----|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(3, 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ------[-----------)",
+                    "                      -> [0----)------------",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(6, 18),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ------[--------)---",
+                    "                      -> [0----)--------[2-)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(6, 15),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(15, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ------[-----)------",
+                    "                      -> [0----)-----[2----)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(6, 12),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ------[--)---------",
+                    "                      -> [0----)--[1-|2----)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(6, 9),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(9, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ------|------------",
+                    "                      -> [0----|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
+                Interval::new(6, 6),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [-----------------)",
+                    "                      -> -------------------",
+                    "  ------[1----|2----)"
+                ),
+                Interval::new(0, 18),
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [--------------)---",
+                    "                      -> ---------------[2-)",
+                    "  ------[1----|2----)"
+                ),
+                Interval::new(0, 15),
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(15, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [-----------)------",
+                    "                      -> ------------[2----)",
+                    "  ------[1----|2----)"
+                ),
+                Interval::new(0, 12),
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [--------)---------",
+                    "                      -> ---------[1-|2----)",
+                    "  ------[1----|2----)"
+                ),
+                Interval::new(0, 9),
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(9, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [-----)------------",
+                    "                      -> ------[1----|2----)",
+                    "  ------[1----|2----)"
+                ),
+                Interval::new(0, 6),
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [--)---------------",
+                    "                      -> ------[1----|2----)",
+                    "  ------[1----|2----)"
+                ),
+                Interval::new(0, 3),
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  |------------------",
+                    "                      -> ------[1----|2----)",
+                    "  ------[1----|2----)"
+                ),
+                Interval::new(0, 0),
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [-----------------)",
+                    "                      -> -------------------",
+                    "  [0----)-----[2----)"
+                ),
+                Interval::new(0, 18),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [--------------)---",
+                    "                      -> ---------------[2-)",
+                    "  [0----)-----[2----)"
+                ),
+                Interval::new(0, 15),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(15, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [-----------)------",
+                    "                      -> ------------[2----)",
+                    "  [0----)-----[2----)"
+                ),
+                Interval::new(0, 12),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [--------)---------",
+                    "                      -> ------------[2----)",
+                    "  [0----)-----[2----)"
+                ),
+                Interval::new(0, 9),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[--------------)",
+                    "                      -> [0-)---------------",
+                    "  [0----)-----[2----)"
+                ),
+                Interval::new(3, 18),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[-----------)---",
+                    "                      -> [0-)-----------[2-)",
+                    "  [0----)-----[2----)"
+                ),
+                Interval::new(3, 15),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(15, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[--------)------",
+                    "                      -> [0-)--------[2----)",
+                    "  [0----)-----[2----)"
+                ),
+                Interval::new(3, 12),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[-----)---------",
+                    "                      -> [0-)--------[2----)",
+                    "  [0----)-----[2----)"
+                ),
+                Interval::new(3, 9),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [-----------------)",
+                    "                      -> -------------------",
+                    "  [0----|1----)------"
+                ),
+                Interval::new(0, 18),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1)
+                ],
+                vec![],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [--------------)---",
+                    "                      -> -------------------",
+                    "  [0----|1----)------"
+                ),
+                Interval::new(0, 15),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1)
+                ],
+                vec![],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[--------------)",
+                    "                      -> [0-)---------------",
+                    "  [0----|1----)------"
+                ),
+                Interval::new(3, 18),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0)
+                ],
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [-----------------)",
+                    "                      -> -------------------",
+                    "  ------[1----)------"
+                ),
+                Interval::new(0, 18),
+                vec![
+                    (Interval::new(6, 12), 1)
+                ],
+                vec![],
+            ),
+        ];
+        for (case_description, update_interval, insert_intervals, expected_intervals) in cases {
+            for (permutation_description, indices) in &permutations[insert_intervals.len()] {
+                let mut interval_map = IntervalMap::new();
+                for &index in indices {
+                    let (insert_interval, insert_value) = insert_intervals[index];
+                    interval_map.insert(insert_interval, insert_value);
+                }
+                interval_map.update(&update_interval, |_| None);
                 assert_eq!(expected_intervals, interval_map.into_iter().collect::<Vec<_>>(), "\npermutation:\n\n{}\ncase:\n\n{}\n", permutation_description, case_description);
             }
         }

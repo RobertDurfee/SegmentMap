@@ -394,11 +394,15 @@ macro_rules! interval_map {
 
 #[cfg(test)]
 mod tests {
-    use crate::Interval;
+    use crate::{
+        Interval,
+        IntervalMap,
+    };
 
     #[test]
-    fn test_remove_loose() {
-        let interval_maps = vec![
+    fn test_remove() {
+
+        let permutations = vec![
 
             // [0----)
             //      \
@@ -406,11 +410,7 @@ mod tests {
             //          \
             //         [2----)
 
-            interval_map![
-                Interval::new(0, 6) => 0,
-                Interval::new(7, 13) => 1,
-                Interval::new(14, 20) => 2
-            ],
+            vec![0, 1, 2],
 
             // [0----)
             //      \
@@ -418,21 +418,13 @@ mod tests {
             //      /
             // [1----)
 
-            interval_map![
-                Interval::new(0, 6) => 0,
-                Interval::new(14, 20) => 2,
-                Interval::new(7, 13) => 1
-            ],
+            vec![0, 2, 1],
 
             //     [1----)
             //      /   \
             // [0----) [2----)
 
-            interval_map![
-                Interval::new(7, 13) => 1,
-                Interval::new(0, 6) => 0,
-                Interval::new(14, 20) => 2
-            ],
+            vec![1, 0, 2],
 
             //     [2----)
             //      /
@@ -440,11 +432,7 @@ mod tests {
             //      \
             //     [1----)
 
-            interval_map![
-                Interval::new(14, 20) => 2,
-                Interval::new(0, 6) => 0,
-                Interval::new(7, 13) => 1
-            ],
+            vec![2, 0, 1],
 
             //         [2----)
             //          /
@@ -452,392 +440,7 @@ mod tests {
             //      /
             // [0----)
 
-            interval_map![
-                Interval::new(14, 20) => 2,
-                Interval::new(7, 13) => 1,
-                Interval::new(0, 6) => 0
-            ],
-
-        ];
-
-        let cases = vec![
-
-            // [-------------------)
-            //                       -> ---------------------
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(0, 20), 
-                vec![],
-            ),
-
-            // [----------------)---
-            //                       -> -----------------[2-)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(0, 17), 
-                vec![
-                    (Interval::new(17, 20), 2),
-                ],
-            ),
-
-            // [-------------)------
-            //                       -> --------------[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(0, 14), 
-                vec![
-                    (Interval::new(14, 20), 2),
-                ],
-            ),
-
-            // [------------)-------
-            //                       -> --------------[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(0, 13), 
-                vec![
-                    (Interval::new(14, 20), 2),
-                ],
-            ),
-
-            // [---------)----------
-            //                       -> ----------[1-)[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(0, 10),
-                vec![
-                    (Interval::new(10, 13), 1),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // [------)-------------
-            //                       -> -------[1----)[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(0, 7),
-                vec![
-                    (Interval::new(7, 13), 1),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // [-----)--------------
-            //                       -> -------[1----)[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(0, 6),
-                vec![
-                    (Interval::new(7, 13), 1),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // [--)-----------------
-            //                       -> ---[0-)[1----)[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(0, 3),
-                vec![
-                    (Interval::new(3, 6), 0),
-                    (Interval::new(7, 13), 1),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // |--------------------
-            //                       -> [0----)[1----)[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(0, 0),
-                vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(7, 13), 1),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // ---[----------------)
-            //                       -> [0-)-----------------
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(3, 20),
-                vec![
-                    (Interval::new(0, 3), 0)
-                ],
-            ),
-
-            // ---[-------------)---
-            //                       -> [0-)-------------[2-)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(3, 17),
-                vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(17, 20), 2)
-                ],
-            ),
-
-            // ---[----------)------
-            //                       -> [0-)----------[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(3, 14),
-                vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // ---[---------)-------
-            //                       -> [0-)----------[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(3, 13),
-                vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // ---[------)----------
-            //                       -> [0-)------[1-)[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(3, 10),
-                vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(10, 13), 1),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // ---[---)-------------
-            //                       -> [0-)---[1----)[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(3, 7),
-                vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(7, 13), 1),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // ---[--)--------------
-            //                       -> [0-)---[1----)[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(3, 6),
-                vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(7, 13), 1),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // --[-)----------------
-            //                       -> [0)-[0)[1----)[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(2, 4),
-                vec![
-                    (Interval::new(0, 2), 0),
-                    (Interval::new(4, 6), 0),
-                    (Interval::new(7, 13), 1),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // ---|-----------------
-            //                       -> [0----)[1----)[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(3, 3),
-                vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(7, 13), 1),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // ------[-------------)
-            //                       -> [0----)--------------
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(6, 20),
-                vec![
-                    (Interval::new(0, 6), 0)
-                ],
-            ),
-
-            // ------[----------)---
-            //                       -> [0----)----------[2-)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(6, 17),
-                vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(17, 20), 2)
-                ],
-            ),
-
-            // ------[-------)------
-            //                       -> [0----)-------[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(6, 14),
-                vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // ------[------)-------
-            //                       -> [0----)-------[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(6, 13),
-                vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // ------[---)----------
-            //                       -> [0----)---[1-)[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(6, 10),
-                vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(10, 13), 1),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // ------[)-------------
-            //                       -> [0----)[1----)[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(6, 7),
-                vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(7, 13), 1),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-            // ------|--------------
-            //                       -> [0----)[1----)[2----)
-            // [0----)[1----)[2----)
-
-            (
-                Interval::new(6, 6),
-                vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(7, 13), 1),
-                    (Interval::new(14, 20), 2)
-                ],
-            ),
-
-        ];
-
-        for interval_map in interval_maps {
-            for (interval, expected) in &cases {
-                let mut interval_map = interval_map.clone();
-                interval_map.remove(interval);
-                assert_eq!(expected, &interval_map.into_iter().collect::<Vec<_>>())
-            }
-        }
-    }
-
-    #[test]
-    fn test_remove_tight() {
-
-        let interval_maps = vec![
-
-            // [0----)
-            //      \
-            //     [1----)
-            //          \
-            //         [2----)
-
-            interval_map![
-                Interval::new(0, 6) => 0,
-                Interval::new(6, 12) => 1,
-                Interval::new(12, 18) => 2
-            ],
-
-            // [0----)
-            //      \
-            //     [2----)
-            //      /
-            // [1----)
-
-            interval_map![
-                Interval::new(0, 6) => 0,
-                Interval::new(12, 18) => 2,
-                Interval::new(6, 12) => 1
-            ],
-
-            //     [1----)
-            //      /   \
-            // [0----) [2----)
-
-            interval_map![
-                Interval::new(6, 12) => 1,
-                Interval::new(0, 6) => 0,
-                Interval::new(12, 18) => 2
-            ],
-
-            //     [2----)
-            //      /
-            // [0----)
-            //      \
-            //     [1----)
-
-            interval_map![
-                Interval::new(12, 18) => 2,
-                Interval::new(0, 6) => 0,
-                Interval::new(6, 12) => 1
-            ],
-
-            //         [2----)
-            //          /
-            //     [1----)
-            //      /
-            // [0----)
-
-            interval_map![
-                Interval::new(12, 18) => 2,
-                Interval::new(6, 12) => 1,
-                Interval::new(0, 6) => 0
-            ],
+            vec![2, 1, 0]
 
         ];
 
@@ -849,6 +452,11 @@ mod tests {
 
             (
                 Interval::new(0, 18),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
                 vec![],
             ),
 
@@ -858,6 +466,11 @@ mod tests {
 
             (
                 Interval::new(0, 15),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
                 vec![
                     (Interval::new(15, 18), 2)
                 ],
@@ -870,6 +483,11 @@ mod tests {
             (
                 Interval::new(0, 12),
                 vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
                     (Interval::new(12, 18), 2)
                 ],
             ),
@@ -880,6 +498,11 @@ mod tests {
 
             (
                 Interval::new(0, 9),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
                 vec![
                     (Interval::new(9, 12), 1),
                     (Interval::new(12, 18), 2)
@@ -893,6 +516,11 @@ mod tests {
             (
                 Interval::new(0, 6),
                 vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
@@ -904,6 +532,11 @@ mod tests {
 
             (
                 Interval::new(0, 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
                 vec![
                     (Interval::new(3, 6), 0),
                     (Interval::new(6, 12), 1),
@@ -922,6 +555,11 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
             ),
 
             // ---[--------------)
@@ -930,6 +568,11 @@ mod tests {
 
             (
                 Interval::new(3, 18),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
                 vec![
                     (Interval::new(0, 3), 0)
                 ],
@@ -941,6 +584,11 @@ mod tests {
 
             (
                 Interval::new(3, 15),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
                 vec![
                     (Interval::new(0, 3), 0),
                     (Interval::new(15, 18), 2)
@@ -954,6 +602,11 @@ mod tests {
             (
                 Interval::new(3, 12),
                 vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
                     (Interval::new(0, 3), 0),
                     (Interval::new(12, 18), 2)
                 ],
@@ -965,6 +618,11 @@ mod tests {
 
             (
                 Interval::new(3, 9),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
                 vec![
                     (Interval::new(0, 3), 0),
                     (Interval::new(9, 12), 1),
@@ -979,6 +637,11 @@ mod tests {
             (
                 Interval::new(3, 6),
                 vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
                     (Interval::new(0, 3), 0),
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
@@ -991,6 +654,11 @@ mod tests {
 
             (
                 Interval::new(2, 4),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
                 vec![
                     (Interval::new(0, 2), 0),
                     (Interval::new(4, 6), 0),
@@ -1010,6 +678,11 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
             ),
 
             // ------[-----------)
@@ -1018,6 +691,11 @@ mod tests {
 
             (
                 Interval::new(6, 18),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
                 vec![
                     (Interval::new(0, 6), 0)
                 ],
@@ -1029,6 +707,11 @@ mod tests {
 
             (
                 Interval::new(6, 15),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
                 vec![
                     (Interval::new(0, 6), 0),
                     (Interval::new(15, 18), 2)
@@ -1043,6 +726,11 @@ mod tests {
                 Interval::new(6, 12),
                 vec![
                     (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0),
                     (Interval::new(12, 18), 2)
                 ],
             ),
@@ -1053,6 +741,11 @@ mod tests {
 
             (
                 Interval::new(6, 9),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
                 vec![
                     (Interval::new(0, 6), 0),
                     (Interval::new(9, 12), 1),
@@ -1071,15 +764,803 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
             ),
 
         ];
 
-        for interval_map in interval_maps {
-            for (interval, expected) in &cases {
-                let mut interval_map = interval_map.clone();
-                interval_map.remove(interval);
-                assert_eq!(expected, &interval_map.into_iter().collect::<Vec<_>>())
+        for (remove_interval, insert_intervals, expected_intervals) in cases {
+            for indices in &permutations {
+                let mut interval_map = IntervalMap::new();
+                for &index in indices {
+                    let (insert_interval, insert_value) = insert_intervals[index];
+                    interval_map.insert(insert_interval, insert_value);
+                }
+                interval_map.remove(&remove_interval);
+                assert_eq!(expected_intervals, interval_map.into_iter().collect::<Vec<_>>());
+            }
+        }
+    }
+
+    #[test]
+    fn test_update() {
+
+        let permutations = vec![
+
+            vec![],
+
+            vec![
+
+                // [0----)
+
+                vec![0]
+
+            ],
+
+            vec![
+
+                // [0----)
+                //      \
+                //     [1----)
+
+                vec![0, 1],
+
+                //     [1----)
+                //      /
+                // [0----)
+
+                vec![1, 0]
+            ],
+
+            vec![
+
+                // [0----)
+                //      \
+                //     [1----)
+                //          \
+                //         [2----)
+
+                vec![0, 1, 2],
+
+                // [0----)
+                //      \
+                //     [2----)
+                //      /
+                // [1----)
+
+                vec![0, 2, 1],
+
+                //     [1----)
+                //      /   \
+                // [0----) [2----)
+
+                vec![1, 0, 2],
+
+                //     [2----)
+                //      /
+                // [0----)
+                //      \
+                //     [1----)
+
+                vec![2, 0, 1],
+
+                //         [2----)
+                //          /
+                //     [1----)
+                //      /
+                // [0----)
+
+                vec![2, 1, 0]
+
+            ]
+
+        ];
+
+        let cases = vec![
+
+            // [3----------------)
+            //                       -> [3----|3----|3----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(0, 18), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 18), 3)
+                ],
+            ),
+
+            // [3-------------)---
+            //                       -> [3----|3----|3-|2-)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(0, 15), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 15), 3),
+                    (Interval::new(15, 18), 2)
+                ],
+            ),
+
+            // [3----------)------
+            //                       -> [3----|3----|2----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(0, 12), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // [3-------)---------
+            //                       -> [3----|3-|1-|2----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(0, 9), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 9), 3),
+                    (Interval::new(9, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // [3----)------------
+            //                       -> [3----|1----|2----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(0, 6), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // [3-)---------------
+            //                       -> [3-|0-|1----|2----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(0, 3), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 3),
+                    (Interval::new(3, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // |------------------
+            //                       -> [0----|1----|2----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(0, 0), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // ---[3-------------)
+            //                       -> [0-|3-|3----|3----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(3, 18), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(3, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 18), 3)
+                ],
+            ),
+
+            // ---[3----------)---
+            //                       -> [0-|3-|3----|3-|2-)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(3, 15), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(3, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 15), 3),
+                    (Interval::new(15, 18), 2)
+                ],
+            ),
+
+            // ---[3-------)------
+            //                       -> [0-|3-|3----|2----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(3, 12), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(3, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // ---[3----)---------
+            //                       -> [0-|3-|3-|1-|2----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(3, 9), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(3, 6), 3),
+                    (Interval::new(6, 9), 3),
+                    (Interval::new(9, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // ---[3-)------------
+            //                       -> [0-|3-|1----|2----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(3, 6), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(3, 6), 3),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // --[3)--------------
+            //                       -> [0|3|0|1----|2----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(2, 4), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 2), 0),
+                    (Interval::new(2, 4), 3),
+                    (Interval::new(4, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // ---|---------------
+            //                       -> [0----|1----|2----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(3, 3), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // ------[3----------)
+            //                       -> [0----|3----|3----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(6, 18), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 18), 3)
+                ],
+            ),
+
+            // ------[3-------)---
+            //                       -> [0----|3----|3-|2-)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(6, 15), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 15), 3),
+                    (Interval::new(15, 18), 2)
+                ],
+            ),
+
+            // ------[3----)------
+            //                       -> [0----|3----|2----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(6, 12), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // ------[3-)---------
+            //                       -> [0----|3-|1-|2----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(6, 9), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 9), 3),
+                    (Interval::new(9, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // ------|------------
+            //                       -> [0----|1----|2----)
+            // [0----|1----|2----)
+
+            (
+                (Interval::new(6, 6), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // [3----------------)
+            //                       -> [3----|3----|3----)
+            // ------[1----|2----)
+
+            (
+                (Interval::new(0, 18), 3),
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 18), 3)
+                ],
+            ),
+
+            // [3-------------)---
+            //                       -> [3----|3----|3-|2-)
+            // ------[1----|2----)
+
+            (
+                (Interval::new(0, 15), 3),
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 15), 3),
+                    (Interval::new(15, 18), 2)
+                ],
+            ),
+
+            // [3----------)------
+            //                       -> [3----|3----|2----)
+            // ------[1----|2----)
+
+            (
+                (Interval::new(0, 12), 3),
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // [3-------)---------
+            //                       -> [3----|3-|1-|2----)
+            // ------[1----|2----)
+
+            (
+                (Interval::new(0, 9), 3),
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 9), 3),
+                    (Interval::new(9, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // [3----)------------
+            //                       -> [3----|1----|2----)
+            // ------[1----|2----)
+
+            (
+                (Interval::new(0, 6), 3),
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // [3-)---------------
+            //                       -> [3-)--[1----|2----)
+            // ------[1----|2----)
+
+            (
+                (Interval::new(0, 3), 3),
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 3),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // |------------------
+            //                       -> ------[1----|2----)
+            // ------[1----|2----)
+
+            (
+                (Interval::new(0, 0), 3),
+                vec![
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // [3----------------)
+            //                       -> [3----|3----|3----)
+            // [0----)-----[2----)
+
+            (
+                (Interval::new(0, 18), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 18), 3)
+                ],
+            ),
+
+            // [3-------------)---
+            //                       -> [3----|3----|3-|2-)
+            // [0----)-----[2----)
+
+            (
+                (Interval::new(0, 15), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 15), 3),
+                    (Interval::new(15, 18), 2)
+                ],
+            ),
+
+            // [3----------)------
+            //                       -> [3----|3----|2----)
+            // [0----)-----[2----)
+
+            (
+                (Interval::new(0, 12), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // [3-------)---------
+            //                       -> [3----|3-)--[2----)
+            // [0----)-----[2----)
+
+            (
+                (Interval::new(0, 9), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 9), 3),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // ---[3-------------)
+            //                       -> [0-|3-|3----|3----)
+            // [0----)-----[2----)
+
+            (
+                (Interval::new(3, 18), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(3, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 18), 3)
+                ],
+            ),
+
+            // ---[3----------)---
+            //                       -> [0-|3-|3----|3-|2-)
+            // [0----)-----[2----)
+
+            (
+                (Interval::new(3, 15), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(3, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 15), 3),
+                    (Interval::new(15, 18), 2)
+                ],
+            ),
+
+            // ---[3-------)------
+            //                       -> [0-|3-|3----|2----)
+            // [0----)-----[2----)
+
+            (
+                (Interval::new(3, 12), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(3, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // ---[3----)---------
+            //                       -> [0-|3-|3-)--[2----)
+            // [0----)-----[2----)
+
+            (
+                (Interval::new(3, 9), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(12, 18), 2)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(3, 6), 3),
+                    (Interval::new(6, 9), 3),
+                    (Interval::new(12, 18), 2)
+                ],
+            ),
+
+            // [3----------------)
+            //                       -> [3----|3----|3----)
+            // [0----|1----)------
+
+            (
+                (Interval::new(0, 18), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 18), 3)
+                ],
+            ),
+
+            // [3-------------)---
+            //                       -> [3----|3----|3-)---
+            // [0----|1----)------
+
+            (
+                (Interval::new(0, 15), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 15), 3)
+                ],
+            ),
+
+            // ---[3-------------)
+            //                       -> [0-|3-|3----|3----)
+            // [0----|1----)------
+
+            (
+                (Interval::new(3, 18), 3),
+                vec![
+                    (Interval::new(0, 6), 0),
+                    (Interval::new(6, 12), 1)
+                ],
+                vec![
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(3, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 18), 3)
+                ],
+            ),
+
+            // [3----------------)
+            //                       -> [3----|3----|3----)
+            // ------[1----)------
+
+            (
+                (Interval::new(0, 18), 3),
+                vec![
+                    (Interval::new(6, 12), 1)
+                ],
+                vec![
+                    (Interval::new(0, 6), 3),
+                    (Interval::new(6, 12), 3),
+                    (Interval::new(12, 18), 3)
+                ],
+            ),
+
+        ];
+
+        for (update_interval, insert_intervals, expected_intervals) in cases {
+            for indices in &permutations[insert_intervals.len()] {
+                let mut interval_map = IntervalMap::new();
+                for &index in indices {
+                    let (insert_interval, insert_value) = insert_intervals[index];
+                    interval_map.insert(insert_interval, insert_value);
+                }
+                let (update_interval, update_value) = update_interval;
+                interval_map.update(&update_interval, |_| Some(update_value));
+                assert_eq!(expected_intervals, interval_map.into_iter().collect::<Vec<_>>());
             }
         }
     }

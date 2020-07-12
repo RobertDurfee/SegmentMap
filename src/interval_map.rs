@@ -8,7 +8,7 @@ pub struct IntervalMap<K, V> {
     root: Option<IntervalMapNode<K, V>>,
 }
 
-impl<K: Clone + PartialOrd, V: Clone> IntervalMap<K, V> {
+impl<K: PartialOrd, V> IntervalMap<K, V> {
     pub fn new() -> IntervalMap<K, V> {
         IntervalMap { root: None }
     }
@@ -70,7 +70,9 @@ impl<K: Clone + PartialOrd, V: Clone> IntervalMap<K, V> {
             self.root = Some(IntervalMapNode::new(interval, value, None, None));
         }
     }
+}
 
+impl<K: Clone + PartialOrd, V: Clone> IntervalMap<K, V> {
     pub fn remove(&mut self, interval: &Interval<K>) {
         if let Some(root) = self.root.take() {
             self.root = root.remove(interval);

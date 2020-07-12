@@ -8,7 +8,7 @@ pub(crate) struct IntervalMapNode<K, V> {
     pub(crate) right: Box<Option<IntervalMapNode<K, V>>>
 }
 
-impl<K: Clone + PartialOrd, V: Clone> IntervalMapNode<K, V> {
+impl<K: PartialOrd, V> IntervalMapNode<K, V> {
     pub(crate) fn new(interval: Interval<K>, value: V, left: Option<IntervalMapNode<K, V>>, right: Option<IntervalMapNode<K, V>>) -> IntervalMapNode<K, V> {
         IntervalMapNode {
             interval,
@@ -93,7 +93,9 @@ impl<K: Clone + PartialOrd, V: Clone> IntervalMapNode<K, V> {
             panic!("intervals must not overlap");
         }
     }
+}
 
+impl<K: Clone + PartialOrd, V: Clone> IntervalMapNode<K, V> {
     pub(crate) fn remove(mut self, interval: &Interval<K>) -> Option<IntervalMapNode<K, V>> {
         if interval.is_empty() {
             Some(self)

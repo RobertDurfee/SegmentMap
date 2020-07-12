@@ -1,181 +1,7 @@
-use crate::Interval;
-
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct IntervalMapNode<K, V> {
-    interval: Interval<K>,
-    value: V,
-    left: Box<Option<IntervalMapNode<K, V>>>,
-    right: Box<Option<IntervalMapNode<K, V>>>
-}
-
-impl<K: Clone + PartialOrd, V: Clone> IntervalMapNode<K, V> {
-    pub fn new(interval: Interval<K>, value: V, left: Option<IntervalMapNode<K, V>>, right: Option<IntervalMapNode<K, V>>) -> IntervalMapNode<K, V> {
-        IntervalMapNode {
-            interval,
-            value,
-            left: Box::new(left),
-            right: Box::new(right),
-        }
-    }
-
-    pub fn min_key(&self) -> &K {
-        self.min_node().interval.lower()
-    }
-
-    pub fn min_node(&self) -> &IntervalMapNode<K, V> {
-        if let Some(left) = self.left.as_ref() {
-            left.min_node()
-        } else { self }
-    }
-
-    pub fn min_node_mut(&mut self) -> &mut IntervalMapNode<K, V> {
-        if let Some(ref mut left) = *self.left {
-            left.min_node_mut()
-        } else { self }
-    }
-
-    pub fn remove_min_node(mut self) -> (Option<IntervalMapNode<K, V>>, IntervalMapNode<K, V>) {
-        if let Some(left) = self.left.take() {
-            let (left, min_node) = left.remove_max_node();
-            self.left = Box::new(left);
-            (Some(self), min_node)
-        } else { (None, self) }
-    }
-
-    pub fn max_key(&self) -> &K {
-        self.max_node().interval.upper()
-    }
-
-    pub fn max_node(&self) -> &IntervalMapNode<K, V> {
-        if let Some(right) = self.right.as_ref() {
-            right.max_node()
-        } else { self }
-    }
-
-    pub fn max_node_mut(&mut self) -> &mut IntervalMapNode<K, V> {
-        if let Some(ref mut right) = *self.right {
-            right.max_node_mut()
-        } else { self }
-    }
-
-    pub fn remove_max_node(mut self) -> (Option<IntervalMapNode<K, V>>, IntervalMapNode<K, V>) {
-        if let Some(right) = self.right.take() {
-            let (right, max_node) = right.remove_max_node();
-            self.right = Box::new(right);
-            (Some(self), max_node)
-        } else { (None, self) }
-    }
-
-    pub fn span(&self) -> Interval<&K> {
-        Interval::new(self.min_key(), self.max_key())
-    }
-
-    pub fn get_entry(&self, key: &K) -> Option<(&Interval<K>, &V)> {
-        if self.interval.contains(key) {
-            Some((&self.interval, &self.value))
-        } else if key < self.interval.lower() {
-            if let Some(left) = self.left.as_ref() {
-                left.get_entry(key)
-            } else { None }
-        } else {
-            if let Some(right) = self.right.as_ref() {
-                right.get_entry(key)
-            } else { None }
-        }
-    }
-
-    pub fn insert(&mut self, interval: Interval<K>, value: V) {
-        if interval.upper() <= self.interval.lower() {
-            if let Some(left) = self.left.as_mut() {
-                left.insert(interval, value);
-            } else {
-                self.left = Box::new(Some(IntervalMapNode::new(interval, value, None, None)));
-            }
-        } else if interval.lower() >= self.interval.upper() {
-            if let Some(right) = self.right.as_mut() {
-                right.insert(interval, value);
-            } else {
-                self.right = Box::new(Some(IntervalMapNode::new(interval, value, None, None)));
-            }
-        } else {
-            panic!("intervals must not overlap");
-        }
-    }
-
-    pub fn remove(mut self, interval: &Interval<K>) -> Option<IntervalMapNode<K, V>> {
-        if interval.is_empty() {
-            Some(self)
-        } else if let Some(intersection) = interval.intersection(&self.interval) {
-            if intersection.is_empty() {
-                if interval.lower() >= self.interval.upper() {
-                    if let Some(right) = self.right.take() {
-                        self.right = Box::new(right.remove(interval));
-                    }
-                } else {
-                    if let Some(left) = self.left.take() {
-                        self.left = Box::new(left.remove(interval));
-                    }
-                }
-                Some(self)
-            } else {
-                let mut result = match (*self.left, *self.right) {
-                    (Some(left), Some(right)) => {
-                        let (right, mut result) = right.remove_min_node();
-                        result.right = Box::new(right);
-                        result.left = Box::new(Some(left));
-                        Some(result)
-                    },
-                    (Some(left), None) => Some(left),
-                    (None, Some(right)) => Some(right),
-                    (None, None) => None,
-                };
-                if interval.lower() < intersection.lower() {
-                    result = if let Some(result) = result {
-                        result.remove(&Interval::new(interval.lower().clone(), intersection.lower().clone()))
-                    } else { None };
-                } else if self.interval.lower() < intersection.lower() {
-                    let interval = Interval::new(self.interval.lower().clone(), intersection.lower().clone());
-                    if let Some(result) = result.as_mut() {
-                        result.insert(interval, self.value.clone());
-                    } else {
-                        result = Some(IntervalMapNode::new(interval, self.value.clone(), None, None));
-                    }
-                }
-                if interval.upper() > intersection.upper() {
-                    result = if let Some(result) = result {
-                        result.remove(&Interval::new(intersection.upper().clone(), interval.upper().clone()))
-                    } else { None };
-                } else if self.interval.upper() > intersection.upper() {
-                    let interval = Interval::new(intersection.upper().clone(), self.interval.upper().clone());
-                    if let Some(result) = result.as_mut() {
-                        result.insert(interval, self.value);
-                    } else {
-                        result = Some(IntervalMapNode::new(interval, self.value, None, None));
-                    }
-                }
-                result
-            }
-        } else {
-            if interval.lower() > self.interval.upper() {
-                if let Some(right) = self.right.take() {
-                    self.right = Box::new(right.remove(interval));
-                }
-            } else {
-                if let Some(left) = self.left.take() {
-                    self.left = Box::new(left.remove(interval));
-                }
-            }
-            Some(self)
-        }
-    }
-
-    pub fn update_entry<F>(&mut self, _interval: &Interval<K>, _f: F)
-    where
-        F: FnMut(&Interval<K>, Option<V>) -> Option<V>
-    {
-        panic!("Not implemented")
-    }
-}
+use crate::{
+    interval_map_node::IntervalMapNode,
+    Interval,
+};
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct IntervalMap<K, V> {
@@ -226,7 +52,7 @@ impl<K: Clone + PartialOrd, V: Clone> IntervalMap<K, V> {
     }
 
     pub fn get(&self, key: &K) -> Option<&V> {
-        self.get_entry(key).map(|(_, value)| value)
+        self.root.as_ref().and_then(|root| root.get(key))
     }
 
     pub fn get_entry(&self, key: &K) -> Option<(&Interval<K>, &V)> {
@@ -251,18 +77,26 @@ impl<K: Clone + PartialOrd, V: Clone> IntervalMap<K, V> {
         }
     }
 
-    pub fn update<F>(&mut self, interval: &Interval<K>, mut f: F) 
+    pub fn update<F>(&mut self, interval: &Interval<K>, value: F) 
     where
-        F: FnMut(Option<V>) -> Option<V>
+        F: Fn(Option<V>) -> Option<V> + Clone
     {
-        self.update_entry(interval, |_, value| f(value));
+        if let Some(root) = self.root.take() {
+            self.root = root.update(interval, value);
+        } else if let Some(value) = value(None) {
+            self.insert(interval.clone(), value);
+        }
     }
 
-    pub fn update_entry<F>(&mut self, _inteval: &Interval<K>, _f: F)
+    pub fn update_entry<F>(&mut self, interval: &Interval<K>, value: F)
     where
-        F: FnMut(&Interval<K>, Option<V>) -> Option<V>
+        F: Fn(&Interval<K>, Option<V>) -> Option<V> + Clone
     {
-        panic!("Not implemented")
+        if let Some(root) = self.root.take() {
+            self.root = root.update_entry(interval, value);
+        } else if let Some(value) = value(interval, None) {
+            self.insert(interval.clone(), value);
+        }
     }
 }
 
@@ -402,55 +236,60 @@ mod tests {
     #[test]
     fn test_remove() {
 
-        let permutations = vec![
-
-            // [0----)
-            //      \
-            //     [1----)
-            //          \
-            //         [2----)
-
-            vec![0, 1, 2],
-
-            // [0----)
-            //      \
-            //     [2----)
-            //      /
-            // [1----)
-
-            vec![0, 2, 1],
-
-            //     [1----)
-            //      /   \
-            // [0----) [2----)
-
-            vec![1, 0, 2],
-
-            //     [2----)
-            //      /
-            // [0----)
-            //      \
-            //     [1----)
-
-            vec![2, 0, 1],
-
-            //         [2----)
-            //          /
-            //     [1----)
-            //      /
-            // [0----)
-
-            vec![2, 1, 0]
-
+        let permutations = vec![(
+                format!("{}\n{}\n{}\n{}\n{}\n",
+                    "  [0----)",
+                    "       \\",
+                    "      [1----)",
+                    "           \\",
+                    "          [2----)"
+                ),
+                vec![0, 1, 2]
+            ), (
+                format!("{}\n{}\n{}\n{}\n{}\n",
+                    "  [0----)",
+                    "       \\",
+                    "      [2----)",
+                    "       /",
+                    "  [1----)"
+                ),
+                vec![0, 2, 1]
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "      [1----)",
+                    "       /   \\",
+                    "  [0----) [2----)",
+                ),
+                vec![1, 0, 2]
+            ), (
+                format!("{}\n{}\n{}\n{}\n{}\n",
+                    "      [2----)",
+                    "       /",
+                    "  [0----)",
+                    "       \\",
+                    "      [1----)"
+                ),
+                vec![2, 0, 1]
+            ), (
+                format!("{}\n{}\n{}\n{}\n{}\n",
+                    "          [2----)",
+                    "           /",
+                    "      [1----)",
+                    "       /",
+                    "  [0----)"
+                ),
+                vec![2, 1, 0]
+            )
         ];
 
         let cases = vec![
 
-            // [-----------------)
-            //                       -> -------------------
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  [-----------------)",
+                    "                      -> -------------------",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(0, 18),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -460,11 +299,12 @@ mod tests {
                 vec![],
             ),
 
-            // [--------------)---
-            //                       -> ---------------[2-)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  [--------------)---",
+                    "                      -> ---------------[2-)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(0, 15),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -476,11 +316,12 @@ mod tests {
                 ],
             ),
 
-            // [-----------)------
-            //                       -> ------------[2----)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  [-----------)------",
+                    "                      -> ------------[2----)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(0, 12),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -492,11 +333,12 @@ mod tests {
                 ],
             ),
 
-            // [--------)---------
-            //                       -> ---------[1-|2----)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  [--------)---------",
+                    "                      -> ---------[1-|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(0, 9),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -509,11 +351,12 @@ mod tests {
                 ],
             ),
 
-            // [-----)------------
-            //                       -> ------[1----|2----)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  [-----)------------",
+                    "                      -> ------[1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(0, 6),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -526,11 +369,12 @@ mod tests {
                 ],
             ),
 
-            // [--)---------------
-            //                       -> ---[0-|1----|2----)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  [--)---------------",
+                    "                      -> ---[0-|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(0, 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -544,11 +388,12 @@ mod tests {
                 ],
             ),
 
-            // |------------------
-            //                       -> [0----|1----|2----)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  |------------------",
+                    "                      -> [0----|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(0, 0),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -562,11 +407,12 @@ mod tests {
                 ],
             ),
 
-            // ---[--------------)
-            //                       -> [0-)---------------
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  ---[--------------)",
+                    "                      -> [0-)---------------",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(3, 18),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -578,11 +424,12 @@ mod tests {
                 ],
             ),
 
-            // ---[-----------)---
-            //                       -> [0-)-----------[2-)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  ---[-----------)---",
+                    "                      -> [0-)-----------[2-)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(3, 15),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -595,11 +442,12 @@ mod tests {
                 ],
             ),
 
-            // ---[--------)------
-            //                       -> [0-)--------[2----)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  ---[--------)------",
+                    "                      -> [0-)--------[2----)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(3, 12),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -612,11 +460,12 @@ mod tests {
                 ],
             ),
 
-            // ---[-----)---------
-            //                       -> [0-)-----[1-|2----)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  ---[-----)---------",
+                    "                      -> [0-)-----[1-|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(3, 9),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -630,11 +479,12 @@ mod tests {
                 ],
             ),
 
-            // ---[--)------------
-            //                       -> [0-)--[1----|2----)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  ---[--)------------",
+                    "                      -> [0-)--[1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(3, 6),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -648,11 +498,12 @@ mod tests {
                 ],
             ),
 
-            // --[-)--------------
-            //                       -> [0)-[0|1----|2----)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  --[-)--------------",
+                    "                      -> [0)-[0|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(2, 4),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -667,11 +518,12 @@ mod tests {
                 ],
             ),
 
-            // ---|---------------
-            //                       -> [0----|1----|2----)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  ---|---------------",
+                    "                      -> [0----|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(3, 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -685,11 +537,12 @@ mod tests {
                 ],
             ),
 
-            // ------[-----------)
-            //                       -> [0----)------------
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  ------[-----------)",
+                    "                      -> [0----)------------",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(6, 18),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -701,11 +554,12 @@ mod tests {
                 ],
             ),
 
-            // ------[--------)---
-            //                       -> [0----)--------[2-)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  ------[--------)---",
+                    "                      -> [0----)--------[2-)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(6, 15),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -718,11 +572,12 @@ mod tests {
                 ],
             ),
 
-            // ------[-----)------
-            //                       -> [0----)-----[2----)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  ------[-----)------",
+                    "                      -> [0----)-----[2----)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(6, 12),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -735,11 +590,12 @@ mod tests {
                 ],
             ),
 
-            // ------[--)---------
-            //                       -> [0----)--[1-|2----)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  ------[--)---------",
+                    "                      -> [0----)--[1-|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(6, 9),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -753,11 +609,12 @@ mod tests {
                 ],
             ),
 
-            // ------|------------
-            //                       -> [0----|1----|2----)
-            // [0----|1----|2----)
-
             (
+                format!("{}\n{}\n{}\n",
+                    "  ------|------------",
+                    "                      -> [0----|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 Interval::new(6, 6),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -773,15 +630,15 @@ mod tests {
 
         ];
 
-        for (remove_interval, insert_intervals, expected_intervals) in cases {
-            for indices in &permutations {
+        for (case_description, remove_interval, insert_intervals, expected_intervals) in cases {
+            for (permutation_description, indices) in &permutations {
                 let mut interval_map = IntervalMap::new();
                 for &index in indices {
                     let (insert_interval, insert_value) = insert_intervals[index];
                     interval_map.insert(insert_interval, insert_value);
                 }
                 interval_map.remove(&remove_interval);
-                assert_eq!(expected_intervals, interval_map.into_iter().collect::<Vec<_>>());
+                assert_eq!(expected_intervals, interval_map.into_iter().collect::<Vec<_>>(), "\npermutation:\n\n{}\ncase:\n\n{}\n", permutation_description, case_description);
             }
         }
     }
@@ -790,83 +647,81 @@ mod tests {
     fn test_update() {
 
         let permutations = vec![
-
-            vec![],
-
             vec![
-
-                // [0----)
-
-                vec![0]
-
-            ],
-
-            vec![
-
-                // [0----)
-                //      \
-                //     [1----)
-
-                vec![0, 1],
-
-                //     [1----)
-                //      /
-                // [0----)
-
-                vec![1, 0]
-            ],
-
-            vec![
-
-                // [0----)
-                //      \
-                //     [1----)
-                //          \
-                //         [2----)
-
-                vec![0, 1, 2],
-
-                // [0----)
-                //      \
-                //     [2----)
-                //      /
-                // [1----)
-
-                vec![0, 2, 1],
-
-                //     [1----)
-                //      /   \
-                // [0----) [2----)
-
-                vec![1, 0, 2],
-
-                //     [2----)
-                //      /
-                // [0----)
-                //      \
-                //     [1----)
-
-                vec![2, 0, 1],
-
-                //         [2----)
-                //          /
-                //     [1----)
-                //      /
-                // [0----)
-
-                vec![2, 1, 0]
-
+            ], vec![(
+                    format!("{}\n",
+                        "  [0----)"
+                    ),
+                    vec![0]
+                )
+            ], vec![(
+                    format!("{}\n{}\n{}\n",
+                        "  [0----)",
+                        "       \\",
+                        "      [1----)"
+                    ),
+                    vec![0, 1]
+                ), (
+                    format!("{}\n{}\n{}\n",
+                        "      [1----)",
+                        "       /",
+                        "  [0----)"
+                    ),
+                    vec![1, 0]
+                )
+            ], vec![(
+                    format!("{}\n{}\n{}\n{}\n{}\n",
+                        "  [0----)",
+                        "       \\",
+                        "      [1----)",
+                        "           \\",
+                        "          [2----)"
+                    ),
+                    vec![0, 1, 2]
+                ), (
+                    format!("{}\n{}\n{}\n{}\n{}\n",
+                        "  [0----)",
+                        "       \\",
+                        "      [2----)",
+                        "       /",
+                        "  [1----)"
+                    ),
+                    vec![0, 2, 1]
+                ), (
+                    format!("{}\n{}\n{}\n",
+                        "      [1----)",
+                        "       /   \\",
+                        "  [0----) [2----)",
+                    ),
+                    vec![1, 0, 2]
+                ), (
+                    format!("{}\n{}\n{}\n{}\n{}\n",
+                        "      [2----)",
+                        "       /",
+                        "  [0----)",
+                        "       \\",
+                        "      [1----)"
+                    ),
+                    vec![2, 0, 1]
+                ), (
+                    format!("{}\n{}\n{}\n{}\n{}\n",
+                        "          [2----)",
+                        "           /",
+                        "      [1----)",
+                        "       /",
+                        "  [0----)"
+                    ),
+                    vec![2, 1, 0]
+                )
             ]
-
         ];
 
-        let cases = vec![
-
-            // [3----------------)
-            //                       -> [3----|3----|3----)
-            // [0----|1----|2----)
-
-            (
+        let cases = vec![(
+                format!("{}\n{}\n{}\n",
+                    "  [3----------------)",
+                    "                      -> [3----|3----|3----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(0, 18), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -878,13 +733,12 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 18), 3)
                 ],
-            ),
-
-            // [3-------------)---
-            //                       -> [3----|3----|3-|2-)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3-------------)---",
+                    "                      -> [3----|3----|3-|2-)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(0, 15), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -897,13 +751,12 @@ mod tests {
                     (Interval::new(12, 15), 3),
                     (Interval::new(15, 18), 2)
                 ],
-            ),
-
-            // [3----------)------
-            //                       -> [3----|3----|2----)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3----------)------",
+                    "                      -> [3----|3----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(0, 12), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -915,13 +768,12 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // [3-------)---------
-            //                       -> [3----|3-|1-|2----)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3-------)---------",
+                    "                      -> [3----|3-|1-|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(0, 9), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -934,13 +786,12 @@ mod tests {
                     (Interval::new(9, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // [3----)------------
-            //                       -> [3----|1----|2----)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3----)------------",
+                    "                      -> [3----|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(0, 6), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -952,13 +803,12 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // [3-)---------------
-            //                       -> [3-|0-|1----|2----)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3-)---------------",
+                    "                      -> [3-|0-|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(0, 3), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -971,13 +821,12 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // |------------------
-            //                       -> [0----|1----|2----)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  |------------------",
+                    "                      -> [0----|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(0, 0), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -989,13 +838,12 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // ---[3-------------)
-            //                       -> [0-|3-|3----|3----)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[3-------------)",
+                    "                      -> [0-|3-|3----|3----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(3, 18), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1008,13 +856,12 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 18), 3)
                 ],
-            ),
-
-            // ---[3----------)---
-            //                       -> [0-|3-|3----|3-|2-)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[3----------)---",
+                    "                      -> [0-|3-|3----|3-|2-)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(3, 15), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1028,13 +875,12 @@ mod tests {
                     (Interval::new(12, 15), 3),
                     (Interval::new(15, 18), 2)
                 ],
-            ),
-
-            // ---[3-------)------
-            //                       -> [0-|3-|3----|2----)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[3-------)------",
+                    "                      -> [0-|3-|3----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(3, 12), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1047,13 +893,12 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // ---[3----)---------
-            //                       -> [0-|3-|3-|1-|2----)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[3----)---------",
+                    "                      -> [0-|3-|3-|1-|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(3, 9), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1067,13 +912,12 @@ mod tests {
                     (Interval::new(9, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // ---[3-)------------
-            //                       -> [0-|3-|1----|2----)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[3-)------------",
+                    "                      -> [0-|3-|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(3, 6), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1086,13 +930,12 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // --[3)--------------
-            //                       -> [0|3|0|1----|2----)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  --[3)--------------",
+                    "                      -> [0|3|0|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(2, 4), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1106,13 +949,12 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // ---|---------------
-            //                       -> [0----|1----|2----)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---|---------------",
+                    "                      -> [0----|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(3, 3), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1124,13 +966,12 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // ------[3----------)
-            //                       -> [0----|3----|3----)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ------[3----------)",
+                    "                      -> [0----|3----|3----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(6, 18), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1142,13 +983,12 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 18), 3)
                 ],
-            ),
-
-            // ------[3-------)---
-            //                       -> [0----|3----|3-|2-)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ------[3-------)---",
+                    "                      -> [0----|3----|3-|2-)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(6, 15), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1161,13 +1001,12 @@ mod tests {
                     (Interval::new(12, 15), 3),
                     (Interval::new(15, 18), 2)
                 ],
-            ),
-
-            // ------[3----)------
-            //                       -> [0----|3----|2----)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ------[3----)------",
+                    "                      -> [0----|3----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(6, 12), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1179,13 +1018,12 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // ------[3-)---------
-            //                       -> [0----|3-|1-|2----)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ------[3-)---------",
+                    "                      -> [0----|3-|1-|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(6, 9), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1198,13 +1036,12 @@ mod tests {
                     (Interval::new(9, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // ------|------------
-            //                       -> [0----|1----|2----)
-            // [0----|1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ------|------------",
+                    "                      -> [0----|1----|2----)",
+                    "  [0----|1----|2----)"
+                ),
                 (Interval::new(6, 6), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1216,13 +1053,12 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // [3----------------)
-            //                       -> [3----|3----|3----)
-            // ------[1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3----------------)",
+                    "                      -> [3----|3----|3----)",
+                    "  ------[1----|2----)"
+                ),
                 (Interval::new(0, 18), 3),
                 vec![
                     (Interval::new(6, 12), 1),
@@ -1233,13 +1069,12 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 18), 3)
                 ],
-            ),
-
-            // [3-------------)---
-            //                       -> [3----|3----|3-|2-)
-            // ------[1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3-------------)---",
+                    "                      -> [3----|3----|3-|2-)",
+                    "  ------[1----|2----)"
+                ),
                 (Interval::new(0, 15), 3),
                 vec![
                     (Interval::new(6, 12), 1),
@@ -1251,13 +1086,12 @@ mod tests {
                     (Interval::new(12, 15), 3),
                     (Interval::new(15, 18), 2)
                 ],
-            ),
-
-            // [3----------)------
-            //                       -> [3----|3----|2----)
-            // ------[1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3----------)------",
+                    "                      -> [3----|3----|2----)",
+                    "  ------[1----|2----)"
+                ),
                 (Interval::new(0, 12), 3),
                 vec![
                     (Interval::new(6, 12), 1),
@@ -1268,13 +1102,12 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // [3-------)---------
-            //                       -> [3----|3-|1-|2----)
-            // ------[1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3-------)---------",
+                    "                      -> [3----|3-|1-|2----)",
+                    "  ------[1----|2----)"
+                ),
                 (Interval::new(0, 9), 3),
                 vec![
                     (Interval::new(6, 12), 1),
@@ -1286,13 +1119,12 @@ mod tests {
                     (Interval::new(9, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // [3----)------------
-            //                       -> [3----|1----|2----)
-            // ------[1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3----)------------",
+                    "                      -> [3----|1----|2----)",
+                    "  ------[1----|2----)"
+                ),
                 (Interval::new(0, 6), 3),
                 vec![
                     (Interval::new(6, 12), 1),
@@ -1303,13 +1135,12 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // [3-)---------------
-            //                       -> [3-)--[1----|2----)
-            // ------[1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3-)---------------",
+                    "                      -> [3-)--[1----|2----)",
+                    "  ------[1----|2----)"
+                ),
                 (Interval::new(0, 3), 3),
                 vec![
                     (Interval::new(6, 12), 1),
@@ -1320,30 +1151,27 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // |------------------
-            //                       -> ------[1----|2----)
-            // ------[1----|2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  |------------------",
+                    "                      -> ------[1----|2----)",
+                    "  ------[1----|2----)"
+                ),
                 (Interval::new(0, 0), 3),
                 vec![
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // [3----------------)
-            //                       -> [3----|3----|3----)
-            // [0----)-----[2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3----------------)",
+                    "                      -> [3----|3----|3----)",
+                    "  [0----)-----[2----)"
+                ),
                 (Interval::new(0, 18), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1354,13 +1182,12 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 18), 3)
                 ],
-            ),
-
-            // [3-------------)---
-            //                       -> [3----|3----|3-|2-)
-            // [0----)-----[2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3-------------)---",
+                    "                      -> [3----|3----|3-|2-)",
+                    "  [0----)-----[2----)"
+                ),
                 (Interval::new(0, 15), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1372,13 +1199,12 @@ mod tests {
                     (Interval::new(12, 15), 3),
                     (Interval::new(15, 18), 2)
                 ],
-            ),
-
-            // [3----------)------
-            //                       -> [3----|3----|2----)
-            // [0----)-----[2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3----------)------",
+                    "                      -> [3----|3----|2----)",
+                    "  [0----)-----[2----)"
+                ),
                 (Interval::new(0, 12), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1389,13 +1215,12 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // [3-------)---------
-            //                       -> [3----|3-)--[2----)
-            // [0----)-----[2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3-------)---------",
+                    "                      -> [3----|3-)--[2----)",
+                    "  [0----)-----[2----)"
+                ),
                 (Interval::new(0, 9), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1406,13 +1231,12 @@ mod tests {
                     (Interval::new(6, 9), 3),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // ---[3-------------)
-            //                       -> [0-|3-|3----|3----)
-            // [0----)-----[2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[3-------------)",
+                    "                      -> [0-|3-|3----|3----)",
+                    "  [0----)-----[2----)"
+                ),
                 (Interval::new(3, 18), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1424,13 +1248,12 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 18), 3)
                 ],
-            ),
-
-            // ---[3----------)---
-            //                       -> [0-|3-|3----|3-|2-)
-            // [0----)-----[2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[3----------)---",
+                    "                      -> [0-|3-|3----|3-|2-)",
+                    "  [0----)-----[2----)"
+                ),
                 (Interval::new(3, 15), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1443,13 +1266,12 @@ mod tests {
                     (Interval::new(12, 15), 3),
                     (Interval::new(15, 18), 2)
                 ],
-            ),
-
-            // ---[3-------)------
-            //                       -> [0-|3-|3----|2----)
-            // [0----)-----[2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[3-------)------",
+                    "                      -> [0-|3-|3----|2----)",
+                    "  [0----)-----[2----)"
+                ),
                 (Interval::new(3, 12), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1461,13 +1283,12 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // ---[3----)---------
-            //                       -> [0-|3-|3-)--[2----)
-            // [0----)-----[2----)
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[3----)---------",
+                    "                      -> [0-|3-|3-)--[2----)",
+                    "  [0----)-----[2----)"
+                ),
                 (Interval::new(3, 9), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1479,13 +1300,12 @@ mod tests {
                     (Interval::new(6, 9), 3),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
-
-            // [3----------------)
-            //                       -> [3----|3----|3----)
-            // [0----|1----)------
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3----------------)",
+                    "                      -> [3----|3----|3----)",
+                    "  [0----|1----)------"
+                ),
                 (Interval::new(0, 18), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1496,13 +1316,12 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 18), 3)
                 ],
-            ),
-
-            // [3-------------)---
-            //                       -> [3----|3----|3-)---
-            // [0----|1----)------
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3-------------)---",
+                    "                      -> [3----|3----|3-)---",
+                    "  [0----|1----)------"
+                ),
                 (Interval::new(0, 15), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1513,13 +1332,12 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 15), 3)
                 ],
-            ),
-
-            // ---[3-------------)
-            //                       -> [0-|3-|3----|3----)
-            // [0----|1----)------
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  ---[3-------------)",
+                    "                      -> [0-|3-|3----|3----)",
+                    "  [0----|1----)------"
+                ),
                 (Interval::new(3, 18), 3),
                 vec![
                     (Interval::new(0, 6), 0),
@@ -1531,13 +1349,12 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 18), 3)
                 ],
-            ),
-
-            // [3----------------)
-            //                       -> [3----|3----|3----)
-            // ------[1----)------
-
-            (
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  [3----------------)",
+                    "                      -> [3----|3----|3----)",
+                    "  ------[1----)------"
+                ),
                 (Interval::new(0, 18), 3),
                 vec![
                     (Interval::new(6, 12), 1)
@@ -1548,11 +1365,10 @@ mod tests {
                     (Interval::new(12, 18), 3)
                 ],
             ),
-
         ];
 
-        for (update_interval, insert_intervals, expected_intervals) in cases {
-            for indices in &permutations[insert_intervals.len()] {
+        for (case_description, update_interval, insert_intervals, expected_intervals) in cases {
+            for (permutation_description, indices) in &permutations[insert_intervals.len()] {
                 let mut interval_map = IntervalMap::new();
                 for &index in indices {
                     let (insert_interval, insert_value) = insert_intervals[index];
@@ -1560,7 +1376,7 @@ mod tests {
                 }
                 let (update_interval, update_value) = update_interval;
                 interval_map.update(&update_interval, |_| Some(update_value));
-                assert_eq!(expected_intervals, interval_map.into_iter().collect::<Vec<_>>());
+                assert_eq!(expected_intervals, interval_map.into_iter().collect::<Vec<_>>(), "\npermutation:\n\n{}\ncase:\n\n{}\n", permutation_description, case_description);
             }
         }
     }

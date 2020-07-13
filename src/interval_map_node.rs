@@ -309,7 +309,7 @@ impl<K: Clone + PartialOrd, V: Clone> IntervalMapNode<K, V> {
     {
         // empty intervals can be updated
         if interval.is_empty() {
-            // if empty interval is enclosed by self interval, split the interval
+            // if empty interval is enclosed by self interval, (potentially) split the interval
             if self.interval.encloses(&interval) {
                 // if empty interval exactly equals self interval
                 if (interval.lower() == self.interval.lower()) && (interval.upper() == self.interval.upper()) {

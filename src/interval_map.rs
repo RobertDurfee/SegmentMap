@@ -236,6 +236,14 @@ mod tests {
     };
 
     #[test]
+    fn test_insert_multiple_empty() {
+        let mut interval_map = IntervalMap::new();
+        interval_map.insert(Interval::new(0, 1), 0);
+        interval_map.insert(Interval::new(1, 1), 1);
+        assert!(std::panic::catch_unwind(move || interval_map.insert(Interval::new(1, 1), 2)).is_err());
+    }
+
+    #[test]
     fn test_remove() {
         let permutations = vec![(
                 format!("{}\n{}\n{}\n{}\n{}\n",
@@ -493,7 +501,7 @@ mod tests {
             ), (
                 format!("{}\n{}\n{}\n",
                     "  ---|---------------",
-                    "                      -> [0----|1----|2----)",
+                    "                      -> [0-|0-|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
                 Interval::new(3, 3),
@@ -503,7 +511,8 @@ mod tests {
                     (Interval::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(3, 6), 0),
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
@@ -588,7 +597,23 @@ mod tests {
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
-            ),
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  |------------------",
+                    "                      -> [1----|2----)------",
+                    "  [1----|2----)------"
+                ),
+                Interval::new(0, 0),
+                vec![
+                    (Interval::new(0, 0), 0),
+                    (Interval::new(0, 6), 1),
+                    (Interval::new(6, 12), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 1),
+                    (Interval::new(6, 12), 2)
+                ],
+            )
 
         ];
         for (case_description, remove_interval, insert_intervals, expected_intervals) in cases {
@@ -793,6 +818,7 @@ mod tests {
                     (Interval::new(12, 18), 2)
                 ],
                 vec![
+                    (Interval::new(0, 0), 3),
                     (Interval::new(0, 6), 0),
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
@@ -911,7 +937,7 @@ mod tests {
             ), (
                 format!("{}\n{}\n{}\n",
                     "  ---|---------------",
-                    "                      -> [0----|1----|2----)",
+                    "                      -> [0-|0-|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
                 (Interval::new(3, 3), 3),
@@ -921,7 +947,9 @@ mod tests {
                     (Interval::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(3, 3), 3),
+                    (Interval::new(3, 6), 0),
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
@@ -1009,6 +1037,7 @@ mod tests {
                 ],
                 vec![
                     (Interval::new(0, 6), 0),
+                    (Interval::new(6, 6), 3),
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
@@ -1113,7 +1142,7 @@ mod tests {
             ), (
                 format!("{}\n{}\n{}\n",
                     "  |------------------",
-                    "                      -> ------[1----|2----)",
+                    "                      -> |-----[1----|2----)",
                     "  ------[1----|2----)"
                 ),
                 (Interval::new(0, 0), 3),
@@ -1122,6 +1151,7 @@ mod tests {
                     (Interval::new(12, 18), 2)
                 ],
                 vec![
+                    (Interval::new(0, 0), 3),
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
@@ -1323,7 +1353,24 @@ mod tests {
                     (Interval::new(6, 12), 3),
                     (Interval::new(12, 18), 3)
                 ],
-            ),
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  |------------------",
+                    "                      -> [1----|2----)------",
+                    "  [1----|2----)------"
+                ),
+                (Interval::new(0, 0), 3),
+                vec![
+                    (Interval::new(0, 0), 0),
+                    (Interval::new(0, 6), 1),
+                    (Interval::new(6, 12), 2)
+                ],
+                vec![
+                    (Interval::new(0, 0), 3),
+                    (Interval::new(0, 6), 1),
+                    (Interval::new(6, 12), 2)
+                ],
+            )
         ];
         for (case_description, update_interval, insert_intervals, expected_intervals) in cases {
             for (permutation_description, indices) in &permutations[insert_intervals.len()] {
@@ -1621,7 +1668,7 @@ mod tests {
             ), (
                 format!("{}\n{}\n{}\n",
                     "  ---|---------------",
-                    "                      -> [0----|1----|2----)",
+                    "                      -> [0-|0-|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
                 Interval::new(3, 3),
@@ -1631,7 +1678,8 @@ mod tests {
                     (Interval::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
+                    (Interval::new(0, 3), 0),
+                    (Interval::new(3, 6), 0),
                     (Interval::new(6, 12), 1),
                     (Interval::new(12, 18), 2)
                 ],
@@ -1978,7 +2026,23 @@ mod tests {
                     (Interval::new(6, 12), 1)
                 ],
                 vec![],
-            ),
+            ), (
+                format!("{}\n{}\n{}\n",
+                    "  |------------------",
+                    "                      -> [1----|2----)------",
+                    "  [1----|2----)------"
+                ),
+                Interval::new(0, 0),
+                vec![
+                    (Interval::new(0, 0), 0),
+                    (Interval::new(0, 6), 1),
+                    (Interval::new(6, 12), 2)
+                ],
+                vec![
+                    (Interval::new(0, 6), 1),
+                    (Interval::new(6, 12), 2)
+                ],
+            )
         ];
         for (case_description, update_interval, insert_intervals, expected_intervals) in cases {
             for (permutation_description, indices) in &permutations[insert_intervals.len()] {

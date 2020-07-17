@@ -3,7 +3,7 @@ use crate::{
     Interval,
 };
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct IntervalMap<K, V> {
     root: Option<IntervalMapNode<K, V>>,
 }

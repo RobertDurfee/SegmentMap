@@ -1,6 +1,6 @@
 use crate::Interval;
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(crate) struct IntervalMapNode<K, V> {
     pub(crate) interval: Interval<K>,
     pub(crate) value: V,

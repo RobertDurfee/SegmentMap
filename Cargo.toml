@@ -1,5 +1,5 @@
 [package]
-name = "interval_map"
+name = "interval-map"
 version = "0.1.0"
 authors = ["Robert Durfee <robert@durfee.io>"]
 edition = "2018"

@@ -1,10 +1,14 @@
 [package]
-name = "interval-map"
+name = "segment-map"
 version = "0.1.0"
-authors = ["Robert Durfee <robert@durfee.io>"]
+authors = ["Robert Durfee <rbd@mit.edu>"]
+description = "A self-balancing binary search tree for mapping discrete, disjoint segments to values."
+license-file = "LICENSE"
+repository = "https://github.com/RobertDurfee/SegmentMap"
+readme = "README.md"
+keywords = ["segment-map", "interval-map", "segment", "interval", "map"]
+categories = ["data-structures"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 num = "0.3"

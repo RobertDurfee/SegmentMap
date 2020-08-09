@@ -1,6 +1,6 @@
-pub mod interval;
-pub mod interval_map_node;
-pub mod interval_map;
+mod segment;
+mod segment_map_node;
+mod segment_map;
 
-pub use crate::interval_map::IntervalMap;
-pub use crate::interval::Interval;
+pub use crate::segment_map::SegmentMap;
+pub use crate::segment::Segment;

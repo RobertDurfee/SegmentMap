@@ -1,17 +1,17 @@
-use crate::Interval;
+use crate::Segment;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub(crate) struct IntervalMapNode<K, V> {
-    pub(crate) interval: Interval<K>,
+pub(crate) struct SegmentMapNode<K, V> {
+    pub(crate) segment: Segment<K>,
     pub(crate) value: V,
-    pub(crate) left: Box<Option<IntervalMapNode<K, V>>>,
-    pub(crate) right: Box<Option<IntervalMapNode<K, V>>>
+    pub(crate) left: Box<Option<SegmentMapNode<K, V>>>,
+    pub(crate) right: Box<Option<SegmentMapNode<K, V>>>
 }
 
-impl<K: PartialOrd, V> IntervalMapNode<K, V> {
-    pub(crate) fn new(interval: Interval<K>, value: V, left: Option<IntervalMapNode<K, V>>, right: Option<IntervalMapNode<K, V>>) -> IntervalMapNode<K, V> {
-        IntervalMapNode {
-            interval,
+impl<K: PartialOrd, V> SegmentMapNode<K, V> {
+    pub(crate) fn new(segment: Segment<K>, value: V, left: Option<SegmentMapNode<K, V>>, right: Option<SegmentMapNode<K, V>>) -> SegmentMapNode<K, V> {
+        SegmentMapNode {
+            segment,
             value,
             left: Box::new(left),
             right: Box::new(right),
@@ -19,10 +19,10 @@ impl<K: PartialOrd, V> IntervalMapNode<K, V> {
     }
 
     pub(crate) fn min_key(&self) -> &K {
-        self.min_node().interval.lower()
+        self.min_node().segment.lower()
     }
 
-    pub(crate) fn min_node(&self) -> &IntervalMapNode<K, V> {
+    pub(crate) fn min_node(&self) -> &SegmentMapNode<K, V> {
         // if left exists, recurse
         if let Some(left) = self.left.as_ref() {
             left.min_node()
@@ -30,7 +30,7 @@ impl<K: PartialOrd, V> IntervalMapNode<K, V> {
         } else { self }
     }
 
-    pub(crate) fn remove_min_node(mut self) -> (Option<IntervalMapNode<K, V>>, IntervalMapNode<K, V>) {
+    pub(crate) fn remove_min_node(mut self) -> (Option<SegmentMapNode<K, V>>, SegmentMapNode<K, V>) {
         // if left exists, recurse
         if let Some(left) = self.left.take() {
             let (left, min_node) = left.remove_min_node();
@@ -41,10 +41,10 @@ impl<K: PartialOrd, V> IntervalMapNode<K, V> {
     }
 
     pub(crate) fn max_key(&self) -> &K {
-        self.max_node().interval.upper()
+        self.max_node().segment.upper()
     }
 
-    pub(crate) fn max_node(&self) -> &IntervalMapNode<K, V> {
+    pub(crate) fn max_node(&self) -> &SegmentMapNode<K, V> {
         // if right exists, recurse
         if let Some(right) = self.right.as_ref() {
             right.max_node()
@@ -52,26 +52,26 @@ impl<K: PartialOrd, V> IntervalMapNode<K, V> {
         } else { self }
     }
 
-    pub(crate) fn span(&self) -> Interval<&K> {
-        Interval::new(self.min_key(), self.max_key())
+    pub(crate) fn span(&self) -> Segment<&K> {
+        Segment::new(self.min_key(), self.max_key())
     }
 
     pub(crate) fn get(&self, key: &K) -> Option<&V> {
         self.get_entry(key).map(|(_, v)| v)
     }
 
-    pub(crate) fn get_entry(&self, key: &K) -> Option<(&Interval<K>, &V)> {
-        // if self interval contains key
-        if self.interval.contains(key) {
-            Some((&self.interval, &self.value))
-        // if key is less than self interval
-        } else if key < self.interval.lower() {
+    pub(crate) fn get_entry(&self, key: &K) -> Option<(&Segment<K>, &V)> {
+        // if self segment contains key
+        if self.segment.contains(key) {
+            Some((&self.segment, &self.value))
+        // if key is less than self segment
+        } else if key < self.segment.lower() {
             // if left exists, recurse
             if let Some(left) = self.left.as_ref() {
                 left.get_entry(key)
             // otherwise, key doesn't exist
             } else { None }
-        // otherwise, key is greater than self interval
+        // otherwise, key is greater than self segment
         } else {
             // if right exists, recurse
             if let Some(right) = self.right.as_ref() {
@@ -81,43 +81,43 @@ impl<K: PartialOrd, V> IntervalMapNode<K, V> {
         }
     }
 
-    pub(crate) fn insert(&mut self, interval: Interval<K>, value: V) {
-        // if the intervals perfectly overlap (this prevents inserting duplicate empty intervals)
-        if (interval.lower() == self.interval.lower()) && (interval.upper() == self.interval.upper()) {
-            panic!("intervals must not overlap");
-        // if interval is less than self interval
-        } else if interval.upper() <= self.interval.lower() {
+    pub(crate) fn insert(&mut self, segment: Segment<K>, value: V) {
+        // if the segments perfectly overlap (this prevents inserting duplicate empty segments)
+        if (segment.lower() == self.segment.lower()) && (segment.upper() == self.segment.upper()) {
+            panic!("segments must not overlap");
+        // if segment is less than self segment
+        } else if segment.upper() <= self.segment.lower() {
             // if left exists, recurse
             if let Some(left) = self.left.as_mut() {
-                left.insert(interval, value);
+                left.insert(segment, value);
             // otherwise, set new left
             } else {
-                self.left = Box::new(Some(IntervalMapNode::new(interval, value, None, None)));
+                self.left = Box::new(Some(SegmentMapNode::new(segment, value, None, None)));
             }
-        // if interval is greater than self interval
-        } else if interval.lower() >= self.interval.upper() {
+        // if segment is greater than self segment
+        } else if segment.lower() >= self.segment.upper() {
             // if right exists, recurse
             if let Some(right) = self.right.as_mut() {
-                right.insert(interval, value);
+                right.insert(segment, value);
             // otherwise, set new right
             } else {
-                self.right = Box::new(Some(IntervalMapNode::new(interval, value, None, None)));
+                self.right = Box::new(Some(SegmentMapNode::new(segment, value, None, None)));
             }
-        // otherwise, intervals overlap in some (non-perfect) way
+        // otherwise, segments overlap in some (non-perfect) way
         } else {
-            panic!("intervals must not overlap");
+            panic!("segments must not overlap");
         }
     }
 }
 
-impl<K: Clone + PartialOrd, V: Clone> IntervalMapNode<K, V> {
-    pub(crate) fn remove(mut self, interval: &Interval<K>) -> Option<IntervalMapNode<K, V>> {
-        // empty intervals can be removed
-        if interval.is_empty() {
-            // if empty interval is enclosed by self interval, (potentially) split the interval
-            if self.interval.encloses(&interval) {
-                // if empty interval exactly equals self interval
-                if (interval.lower() == self.interval.lower()) && (interval.upper() == self.interval.upper()) {
+impl<K: Clone + PartialOrd, V: Clone> SegmentMapNode<K, V> {
+    pub(crate) fn remove(mut self, segment: &Segment<K>) -> Option<SegmentMapNode<K, V>> {
+        // empty segments can be removed
+        if segment.is_empty() {
+            // if empty segment is enclosed by self segment, (potentially) split the segment
+            if self.segment.encloses(&segment) {
+                // if empty segment exactly equals self segment
+                if (segment.lower() == self.segment.lower()) && (segment.upper() == self.segment.upper()) {
                     // remove self
                     match (*self.left, *self.right) {
                         // two children, replace with right minimum
@@ -134,23 +134,23 @@ impl<K: Clone + PartialOrd, V: Clone> IntervalMapNode<K, V> {
                         // no children, remove
                         (None, None) => None,
                     }
-                // if empty interval is touching left side of nonempty self interval, do not remove self
-                } else if interval.lower() == self.interval.lower() {
+                // if empty segment is touching left side of nonempty self segment, do not remove self
+                } else if segment.lower() == self.segment.lower() {
                     // if left exists, recurse
                     self.left = Box::new(if let Some(left) = self.left.take() {
-                        left.remove(interval)
+                        left.remove(segment)
                     // otherwise, nothing to remove
                     } else { None });
                     Some(self)
-                // if empty interval is touching right side of nonempty self interval, do not remove self
-                } else if interval.upper() == self.interval.upper() {
+                // if empty segment is touching right side of nonempty self segment, do not remove self
+                } else if segment.upper() == self.segment.upper() {
                     // if right exists, recurse
                     self.right = Box::new(if let Some(right) = self.right.take() {
-                        right.remove(interval)
+                        right.remove(segment)
                     // otherwise, nothing to remove
                     } else { None });
                     Some(self)
-                // otherwise, empty interval is within self interval
+                // otherwise, empty segment is within self segment
                 } else {
                     // remove self, will reinsert each side of split
                     let mut result = match (*self.left, *self.right) {
@@ -168,56 +168,56 @@ impl<K: Clone + PartialOrd, V: Clone> IntervalMapNode<K, V> {
                         // no children, remove
                         (None, None) => None,
                     };
-                    // reinsert left part of interval
-                    let left_interval = Interval::new(self.interval.lower().clone(), interval.lower().clone());
+                    // reinsert left part of segment
+                    let left_segment = Segment::new(self.segment.lower().clone(), segment.lower().clone());
                     // if result exists, do plain insert
                     if let Some(result) = result.as_mut() {
-                        result.insert(left_interval, self.value.clone());
+                        result.insert(left_segment, self.value.clone());
                     // otherwise, this is the new result
                     } else {
-                        result = Some(IntervalMapNode::new(left_interval, self.value.clone(), None, None));
+                        result = Some(SegmentMapNode::new(left_segment, self.value.clone(), None, None));
                     }
-                    // reinsert right part of interval
-                    let right_interval = Interval::new(interval.upper().clone(), self.interval.upper().clone());
+                    // reinsert right part of segment
+                    let right_segment = Segment::new(segment.upper().clone(), self.segment.upper().clone());
                     // if result exists, do plain insert
                     if let Some(result) = result.as_mut() {
-                        result.insert(right_interval, self.value.clone());
+                        result.insert(right_segment, self.value.clone());
                     // otherwise, this is the new result
                     } else {
-                        result = Some(IntervalMapNode::new(right_interval, self.value.clone(), None, None));
+                        result = Some(SegmentMapNode::new(right_segment, self.value.clone(), None, None));
                     }
                     result
                 }
-            // if empty interval is less than self interval, recurse
-            } else if interval.upper() < self.interval.lower() {
+            // if empty segment is less than self segment, recurse
+            } else if segment.upper() < self.segment.lower() {
                 // if left exists, recurse
                 if let Some(left) = self.left.take() {
-                    self.left = Box::new(left.remove(interval));
+                    self.left = Box::new(left.remove(segment));
                 } // otherwise, nothing to remove
                 Some(self)
-            // otherwise, empty interval is greater than self interval, recurse
+            // otherwise, empty segment is greater than self segment, recurse
             } else {
                 // if right exists, recurse
                 if let Some(right) = self.right.take() {
-                    self.right = Box::new(right.remove(interval));
+                    self.right = Box::new(right.remove(segment));
                 } // otherwise, nothing to remove
                 Some(self)
             }
-        // if the intervals overlap
-        } else if let Some(intersection) = interval.intersection(&self.interval) {
+        // if the segments overlap
+        } else if let Some(intersection) = segment.intersection(&self.segment) {
             // if the overlap is empty, handle specially to prevent infinite recursion
             if intersection.is_empty() {
-                // if interval is touching the right
-                if interval.lower() == self.interval.upper() {
+                // if segment is touching the right
+                if segment.lower() == self.segment.upper() {
                     // if right exists, recurse
                     if let Some(right) = self.right.take() {
-                        self.right = Box::new(right.remove(interval));
+                        self.right = Box::new(right.remove(segment));
                     } // otherwise, nothing to remove
-                // otherwise, interval is touching the left
+                // otherwise, segment is touching the left
                 } else {
                     // if left exists, recurse
                     if let Some(left) = self.left.take() {
-                        self.left = Box::new(left.remove(interval));
+                        self.left = Box::new(left.remove(segment));
                     } // otherwise, nothing to remove
                 }
                 Some(self)
@@ -239,80 +239,80 @@ impl<K: Clone + PartialOrd, V: Clone> IntervalMapNode<K, V> {
                     // no children, simply remove
                     (None, None) => None,
                 };
-                // if left part of interval still needs to be removed
-                if interval.lower() < intersection.lower() {
+                // if left part of segment still needs to be removed
+                if segment.lower() < intersection.lower() {
                     // if result exists, do plain remove
                     result = if let Some(result) = result {
-                        result.remove(&Interval::new(interval.lower().clone(), intersection.lower().clone()))
+                        result.remove(&Segment::new(segment.lower().clone(), intersection.lower().clone()))
                     // otherwise, nothing to remove
                     } else { None };
                 // if left part of self still exists, reinsert
-                } else if self.interval.lower() < intersection.lower() {
-                    let interval = Interval::new(self.interval.lower().clone(), intersection.lower().clone());
+                } else if self.segment.lower() < intersection.lower() {
+                    let segment = Segment::new(self.segment.lower().clone(), intersection.lower().clone());
                     // if result exists, do plain insert
                     if let Some(result) = result.as_mut() {
-                        result.insert(interval, self.value.clone());
+                        result.insert(segment, self.value.clone());
                     // otherwise, this is the new result
                     } else {
-                        result = Some(IntervalMapNode::new(interval, self.value.clone(), None, None));
+                        result = Some(SegmentMapNode::new(segment, self.value.clone(), None, None));
                     }
                 }
-                // if right part of interval still needs to be removed
-                if interval.upper() > intersection.upper() {
+                // if right part of segment still needs to be removed
+                if segment.upper() > intersection.upper() {
                     // if result exists, do plain remove
                     result = if let Some(result) = result {
-                        result.remove(&Interval::new(intersection.upper().clone(), interval.upper().clone()))
+                        result.remove(&Segment::new(intersection.upper().clone(), segment.upper().clone()))
                     // otherwise, nothing to remove
                     } else { None };
                 // if right part of self still exists, reinsert
-                } else if self.interval.upper() > intersection.upper() {
-                    let interval = Interval::new(intersection.upper().clone(), self.interval.upper().clone());
+                } else if self.segment.upper() > intersection.upper() {
+                    let segment = Segment::new(intersection.upper().clone(), self.segment.upper().clone());
                     // if result exists, do plain insert
                     if let Some(result) = result.as_mut() {
-                        result.insert(interval, self.value);
+                        result.insert(segment, self.value);
                     // otherwise, this is the new result
                     } else {
-                        result = Some(IntervalMapNode::new(interval, self.value, None, None));
+                        result = Some(SegmentMapNode::new(segment, self.value, None, None));
                     }
                 }
                 result
             }
-        // otherwise, intervals do not overlap
+        // otherwise, segments do not overlap
         } else {
-            // if interval is greater than self interval
-            if interval.lower() > self.interval.upper() {
+            // if segment is greater than self segment
+            if segment.lower() > self.segment.upper() {
                 // if right exists, recurse
                 if let Some(right) = self.right.take() {
-                    self.right = Box::new(right.remove(interval));
+                    self.right = Box::new(right.remove(segment));
                 } // otherwise, there is nothing to remove
-            // otherwise interval is less than self interval
+            // otherwise segment is less than self segment
             } else {
                 // if left exists, recurse
                 if let Some(left) = self.left.take() {
-                    self.left = Box::new(left.remove(interval));
+                    self.left = Box::new(left.remove(segment));
                 } // otherwise, there is nothing to remove
             }
             Some(self)
         }
     }
 
-    pub(crate) fn update<F>(self, interval: &Interval<K>, value: F) -> Option<IntervalMapNode<K, V>>
+    pub(crate) fn update<F>(self, segment: &Segment<K>, value: F) -> Option<SegmentMapNode<K, V>>
     where
         F: Fn(Option<V>) -> Option<V> + Clone
     {
-        self.update_entry(interval, |_, v| value(v))
+        self.update_entry(segment, |_, v| value(v))
     }
 
-    pub(crate) fn update_entry<F>(mut self, interval: &Interval<K>, value: F) -> Option<IntervalMapNode<K, V>>
+    pub(crate) fn update_entry<F>(mut self, segment: &Segment<K>, value: F) -> Option<SegmentMapNode<K, V>>
     where
-        F: Fn(&Interval<K>, Option<V>) -> Option<V> + Clone
+        F: Fn(&Segment<K>, Option<V>) -> Option<V> + Clone
     {
-        // empty intervals can be updated
-        if interval.is_empty() {
-            // if empty interval is enclosed by self interval, (potentially) split the interval
-            if self.interval.encloses(&interval) {
-                // if empty interval exactly equals self interval
-                if (interval.lower() == self.interval.lower()) && (interval.upper() == self.interval.upper()) {
+        // empty segments can be updated
+        if segment.is_empty() {
+            // if empty segment is enclosed by self segment, (potentially) split the segment
+            if self.segment.encloses(&segment) {
+                // if empty segment exactly equals self segment
+                if (segment.lower() == self.segment.lower()) && (segment.upper() == self.segment.upper()) {
                     // remove self, will reinsert as needed
                     let mut result = match (*self.left, *self.right) {
                         // two children, replace with right minimum
@@ -330,37 +330,37 @@ impl<K: Clone + PartialOrd, V: Clone> IntervalMapNode<K, V> {
                         (None, None) => None,
                     };
                     // if update produces a value, reinsert
-                    if let Some(value) = value(&interval, Some(self.value.clone())) {
+                    if let Some(value) = value(&segment, Some(self.value.clone())) {
                         // if result exists, do plain insert
                         if let Some(result) = result.as_mut() {
-                            result.insert(interval.clone(), value);
+                            result.insert(segment.clone(), value);
                         // otherwise, this is the new result
                         } else {
-                            result = Some(IntervalMapNode::new(interval.clone(), value, None, None));
+                            result = Some(SegmentMapNode::new(segment.clone(), value, None, None));
                         }
                     };
                     result
-                // if empty interval is touching left side of nonempty self interval, do not remove self
-                } else if interval.lower() == self.interval.lower() {
+                // if empty segment is touching left side of nonempty self segment, do not remove self
+                } else if segment.lower() == self.segment.lower() {
                     // if left exists, recurse
                     if let Some(left) = self.left.take() {
-                        self.left = Box::new(left.update_entry(interval, value));
+                        self.left = Box::new(left.update_entry(segment, value));
                     // otherwise, if update produces a value, this is the new result
-                    } else if let Some(value) = value(interval, None) {
-                        self.left = Box::new(Some(IntervalMapNode::new(interval.clone(), value, None, None)));
+                    } else if let Some(value) = value(segment, None) {
+                        self.left = Box::new(Some(SegmentMapNode::new(segment.clone(), value, None, None)));
                     }
                     Some(self)
-                // if empty interval is touching right side of nonempty self interval, do not remove self
-                } else if interval.upper() == self.interval.upper() {
+                // if empty segment is touching right side of nonempty self segment, do not remove self
+                } else if segment.upper() == self.segment.upper() {
                     // if right exists, recurse
                     if let Some(right) = self.right.take() {
-                        self.right = Box::new(right.update_entry(interval, value));
+                        self.right = Box::new(right.update_entry(segment, value));
                     // otherwise, if update produces a value, this is the new result
-                    } else if let Some(value) = value(interval, None) {
-                        self.right = Box::new(Some(IntervalMapNode::new(interval.clone(), value, None, None)));
+                    } else if let Some(value) = value(segment, None) {
+                        self.right = Box::new(Some(SegmentMapNode::new(segment.clone(), value, None, None)));
                     }
                     Some(self)
-                // otherwise, empty interval is within self interval
+                // otherwise, empty segment is within self segment
                 } else {
                     // remove self, will reinsert each side of split
                     let mut result = match (*self.left, *self.right) {
@@ -379,77 +379,77 @@ impl<K: Clone + PartialOrd, V: Clone> IntervalMapNode<K, V> {
                         (None, None) => None,
                     };
                     // if update produces a value, reinsert
-                    if let Some(value) = value(&interval, Some(self.value.clone())) {
+                    if let Some(value) = value(&segment, Some(self.value.clone())) {
                         // if result exists, do plain insert
                         if let Some(result) = result.as_mut() {
-                            result.insert(interval.clone(), value);
+                            result.insert(segment.clone(), value);
                         // otherwise, this is the new result
                         } else {
-                            result = Some(IntervalMapNode::new(interval.clone(), value, None, None));
+                            result = Some(SegmentMapNode::new(segment.clone(), value, None, None));
                         }
                     };
-                    // reinsert left part of interval
-                    let left_interval = Interval::new(self.interval.lower().clone(), interval.lower().clone());
+                    // reinsert left part of segment
+                    let left_segment = Segment::new(self.segment.lower().clone(), segment.lower().clone());
                     // if result exists, do plain insert
                     if let Some(result) = result.as_mut() {
-                        result.insert(left_interval, self.value.clone());
+                        result.insert(left_segment, self.value.clone());
                     // otherwise, this is the new result
                     } else {
-                        result = Some(IntervalMapNode::new(left_interval, self.value.clone(), None, None));
+                        result = Some(SegmentMapNode::new(left_segment, self.value.clone(), None, None));
                     }
-                    // reinsert right part of interval
-                    let right_interval = Interval::new(interval.upper().clone(), self.interval.upper().clone());
+                    // reinsert right part of segment
+                    let right_segment = Segment::new(segment.upper().clone(), self.segment.upper().clone());
                     // if result exists, do plain insert
                     if let Some(result) = result.as_mut() {
-                        result.insert(right_interval, self.value.clone());
+                        result.insert(right_segment, self.value.clone());
                     // otherwise, this is the new result
                     } else {
-                        result = Some(IntervalMapNode::new(right_interval, self.value.clone(), None, None));
+                        result = Some(SegmentMapNode::new(right_segment, self.value.clone(), None, None));
                     }
                     result
                 }
-            // if empty interval is less than self interval, recurse
-            } else if interval.upper() < self.interval.lower() {
+            // if empty segment is less than self segment, recurse
+            } else if segment.upper() < self.segment.lower() {
                 // if left exists, recurse
                 if let Some(left) = self.left.take() {
-                    self.left = Box::new(left.update_entry(interval, value));
+                    self.left = Box::new(left.update_entry(segment, value));
                 // otherwise, if update produces a value, this is the new result
-                } else if let Some(value) = value(interval, None) {
-                    self.left = Box::new(Some(IntervalMapNode::new(interval.clone(), value, None, None)));
+                } else if let Some(value) = value(segment, None) {
+                    self.left = Box::new(Some(SegmentMapNode::new(segment.clone(), value, None, None)));
                 }
                 Some(self)
-            // otherwise, empty interval is greater than self interval, recurse
+            // otherwise, empty segment is greater than self segment, recurse
             } else {
                 // if right exists, recurse
                 if let Some(right) = self.right.take() {
-                    self.right = Box::new(right.update_entry(interval, value));
+                    self.right = Box::new(right.update_entry(segment, value));
                 // otherwise, if update produces a value, this is the new result
-                } else if let Some(value) = value(interval, None) {
-                    self.right = Box::new(Some(IntervalMapNode::new(interval.clone(), value, None, None)));
+                } else if let Some(value) = value(segment, None) {
+                    self.right = Box::new(Some(SegmentMapNode::new(segment.clone(), value, None, None)));
                 }
                 Some(self)
             }
-        // if the intervals overlap
-        } else if let Some(intersection) = interval.intersection(&self.interval) {
+        // if the segments overlap
+        } else if let Some(intersection) = segment.intersection(&self.segment) {
             // if the overlap is empty, handle specially to prevent infinite recursion
             if intersection.is_empty() {
-                // if interval is touching the right
-                if interval.lower() == self.interval.upper() {
+                // if segment is touching the right
+                if segment.lower() == self.segment.upper() {
                     // if right exists, recurse
                     if let Some(right) = self.right.take() {
-                        self.right = Box::new(right.update_entry(interval, value));
+                        self.right = Box::new(right.update_entry(segment, value));
                     // otherwise, if update produces a value, this is the new right
-                    } else if let Some(value) = value(interval, None) {
-                        self.right = Box::new(Some(IntervalMapNode::new(interval.clone(), value, None, None)));
+                    } else if let Some(value) = value(segment, None) {
+                        self.right = Box::new(Some(SegmentMapNode::new(segment.clone(), value, None, None)));
                     }
-                // otherwise, interval is touching the left
+                // otherwise, segment is touching the left
                 } else {
                     // if left exists, recurse
                     if let Some(left) = self.left.take() {
-                        self.left = Box::new(left.update_entry(interval, value));
+                        self.left = Box::new(left.update_entry(segment, value));
                     // otherwise, if update produces a value, this is the new left
-                    } else if let Some(value) = value(interval, None) {
-                        self.left = Box::new(Some(IntervalMapNode::new(interval.clone(), value, None, None)));
+                    } else if let Some(value) = value(segment, None) {
+                        self.left = Box::new(Some(SegmentMapNode::new(segment.clone(), value, None, None)));
                     }
                 }
                 Some(self)
@@ -478,74 +478,74 @@ impl<K: Clone + PartialOrd, V: Clone> IntervalMapNode<K, V> {
                         result.insert(intersection.clone(), value);
                     // otherwise, this is the new result
                     } else {
-                        result = Some(IntervalMapNode::new(intersection.clone(), value, None, None));
+                        result = Some(SegmentMapNode::new(intersection.clone(), value, None, None));
                     }
                 }
-                // if left part of interval still needs to be updated
-                if interval.lower() < intersection.lower() {
-                    let interval = Interval::new(interval.lower().clone(), intersection.lower().clone());
+                // if left part of segment still needs to be updated
+                if segment.lower() < intersection.lower() {
+                    let segment = Segment::new(segment.lower().clone(), intersection.lower().clone());
                     // if result exists, do plain update
                     result = if let Some(result) = result {
-                        result.update_entry(&interval, value.clone())
+                        result.update_entry(&segment, value.clone())
                     // otherwise, if update produces a value, this is the new result
-                    } else if let Some(value) = value(&interval, None) {
-                        Some(IntervalMapNode::new(interval, value, None, None))
+                    } else if let Some(value) = value(&segment, None) {
+                        Some(SegmentMapNode::new(segment, value, None, None))
                     // otherwise, no result
                     } else { None }
                 // if left part of self still exists, reinsert
-                } else if self.interval.lower() < intersection.lower() {
-                    let interval = Interval::new(self.interval.lower().clone(), intersection.lower().clone());
+                } else if self.segment.lower() < intersection.lower() {
+                    let segment = Segment::new(self.segment.lower().clone(), intersection.lower().clone());
                     // if result exists, do plain insert
                     if let Some(result) = result.as_mut() {
-                        result.insert(interval, self.value.clone());
+                        result.insert(segment, self.value.clone());
                     // otherwise, this is the new result
                     } else {
-                        result = Some(IntervalMapNode::new(interval, self.value.clone(), None, None));
+                        result = Some(SegmentMapNode::new(segment, self.value.clone(), None, None));
                     }
                 }
-                // if right part of interval still needs to be updated
-                if interval.upper() > intersection.upper() {
-                    let interval = Interval::new(intersection.upper().clone(), interval.upper().clone());
+                // if right part of segment still needs to be updated
+                if segment.upper() > intersection.upper() {
+                    let segment = Segment::new(intersection.upper().clone(), segment.upper().clone());
                     // if result exists, do plain update
                     result = if let Some(result) = result {
-                        result.update_entry(&interval, value)
+                        result.update_entry(&segment, value)
                     // otherwise, if update produces value, this is the new result
-                    } else if let Some(value) = value(&interval, None) {
-                        Some(IntervalMapNode::new(interval, value, None, None))
+                    } else if let Some(value) = value(&segment, None) {
+                        Some(SegmentMapNode::new(segment, value, None, None))
                     // otherwise, no result
                     } else { None }
                 // if right part of self still exists, reinsert
-                } else if self.interval.upper() > intersection.upper() {
-                    let interval = Interval::new(intersection.upper().clone(), self.interval.upper().clone());
+                } else if self.segment.upper() > intersection.upper() {
+                    let segment = Segment::new(intersection.upper().clone(), self.segment.upper().clone());
                     // if result exists, do plain insert
                     if let Some(result) = result.as_mut() {
-                        result.insert(interval, self.value);
+                        result.insert(segment, self.value);
                     // otherwise, this is the new result
                     } else {
-                        result = Some(IntervalMapNode::new(interval, self.value, None, None));
+                        result = Some(SegmentMapNode::new(segment, self.value, None, None));
                     }
                 }
                 result
             }
-        // otherwise, intervals do not overlap
+        // otherwise, segments do not overlap
         } else {
-            // if interval is greater than self interval
-            if interval.lower() > self.interval.upper() {
+            // if segment is greater than self segment
+            if segment.lower() > self.segment.upper() {
                 // if right exists, recurse
                 if let Some(right) = self.right.take() {
-                    self.right = Box::new(right.update_entry(interval, value));
+                    self.right = Box::new(right.update_entry(segment, value));
                 // otherwise, if update produces value, this is the new right
-                } else if let Some(value) = value(interval, None) {
-                    self.right = Box::new(Some(IntervalMapNode::new(interval.clone(), value, None, None)));
+                } else if let Some(value) = value(segment, None) {
+                    self.right = Box::new(Some(SegmentMapNode::new(segment.clone(), value, None, None)));
                 }
-            // otherwise, interval is less than self interval
+            // otherwise, segment is less than self segment
             } else {
                 // if left exists, recurse
                 if let Some(left) = self.left.take() {
-                    self.left = Box::new(left.update_entry(interval, value));
+                    self.left = Box::new(left.update_entry(segment, value));
                 // otherwise, if update produces value, this is the new right
-                } else if let Some(value) = value(interval, None) {
-                    self.left = Box::new(Some(IntervalMapNode::new(interval.clone(), value, None, None)));
+                } else if let Some(value) = value(segment, None) {
+                    self.left = Box::new(Some(SegmentMapNode::new(segment.clone(), value, None, None)));
                 }
             }
             Some(self)

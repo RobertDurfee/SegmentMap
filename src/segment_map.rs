@@ -1,20 +1,20 @@
 use crate::{
-    interval_map_node::IntervalMapNode,
-    Interval,
+    segment_map_node::SegmentMapNode,
+    Segment,
 };
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct IntervalMap<K, V> {
-    root: Option<IntervalMapNode<K, V>>,
+pub struct SegmentMap<K, V> {
+    root: Option<SegmentMapNode<K, V>>,
 }
 
-impl<K: PartialOrd, V> IntervalMap<K, V> {
-    pub fn new() -> IntervalMap<K, V> {
-        IntervalMap { root: None }
+impl<K: PartialOrd, V> SegmentMap<K, V> {
+    pub fn new() -> SegmentMap<K, V> {
+        SegmentMap { root: None }
     }
 
-    pub fn intervals(&self) -> Intervals<'_, K, V> {
-        Intervals { inner: self.iter() }
+    pub fn segments(&self) -> Segments<'_, K, V> {
+        Segments { inner: self.iter() }
     }
 
     pub fn values(&self) -> Values<'_, K, V> {
@@ -39,7 +39,7 @@ impl<K: PartialOrd, V> IntervalMap<K, V> {
         }
     }
 
-    pub fn span(&self) -> Option<Interval<&K>> {
+    pub fn span(&self) -> Option<Segment<&K>> {
         self.root.as_ref().map(|root| root.span())
     }
 
@@ -55,7 +55,7 @@ impl<K: PartialOrd, V> IntervalMap<K, V> {
         self.root.as_ref().and_then(|root| root.get(key))
     }
 
-    pub fn get_entry(&self, key: &K) -> Option<(&Interval<K>, &V)> {
+    pub fn get_entry(&self, key: &K) -> Option<(&Segment<K>, &V)> {
         self.root.as_ref().and_then(|root| root.get_entry(key))
     }
 
@@ -63,54 +63,54 @@ impl<K: PartialOrd, V> IntervalMap<K, V> {
         self.get_entry(key).is_some()
     }
 
-    pub fn insert(&mut self, interval: Interval<K>, value: V) {
+    pub fn insert(&mut self, segment: Segment<K>, value: V) {
         if let Some(root) = self.root.as_mut() {
-            root.insert(interval, value);
+            root.insert(segment, value);
         } else {
-            self.root = Some(IntervalMapNode::new(interval, value, None, None));
+            self.root = Some(SegmentMapNode::new(segment, value, None, None));
         }
     }
 }
 
-impl<K: Clone + PartialOrd, V: Clone> IntervalMap<K, V> {
-    pub fn remove(&mut self, interval: &Interval<K>) {
+impl<K: Clone + PartialOrd, V: Clone> SegmentMap<K, V> {
+    pub fn remove(&mut self, segment: &Segment<K>) {
         if let Some(root) = self.root.take() {
-            self.root = root.remove(interval);
+            self.root = root.remove(segment);
         }
     }
 
-    pub fn update<F>(&mut self, interval: &Interval<K>, value: F) 
+    pub fn update<F>(&mut self, segment: &Segment<K>, value: F) 
     where
         F: Fn(Option<V>) -> Option<V> + Clone
     {
         if let Some(root) = self.root.take() {
-            self.root = root.update(interval, value);
+            self.root = root.update(segment, value);
         } else if let Some(value) = value(None) {
-            self.insert(interval.clone(), value);
+            self.insert(segment.clone(), value);
         }
     }
 
-    pub fn update_entry<F>(&mut self, interval: &Interval<K>, value: F)
+    pub fn update_entry<F>(&mut self, segment: &Segment<K>, value: F)
     where
-        F: Fn(&Interval<K>, Option<V>) -> Option<V> + Clone
+        F: Fn(&Segment<K>, Option<V>) -> Option<V> + Clone
     {
         if let Some(root) = self.root.take() {
-            self.root = root.update_entry(interval, value);
-        } else if let Some(value) = value(interval, None) {
-            self.insert(interval.clone(), value);
+            self.root = root.update_entry(segment, value);
+        } else if let Some(value) = value(segment, None) {
+            self.insert(segment.clone(), value);
         }
     }
 }
 
-pub struct Intervals<'a, K, V> {
+pub struct Segments<'a, K, V> {
     inner: Iter<'a, K, V>
 }
 
-impl<'a, K, V> Iterator for Intervals<'a, K, V> {
-    type Item = &'a Interval<K>;
+impl<'a, K, V> Iterator for Segments<'a, K, V> {
+    type Item = &'a Segment<K>;
 
-    fn next(&mut self) -> Option<&'a Interval<K>> {
-        self.inner.next().map(|(interval, _)| interval)
+    fn next(&mut self) -> Option<&'a Segment<K>> {
+        self.inner.next().map(|(segment, _)| segment)
     }
 }
 
@@ -139,55 +139,55 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
 }
 
 pub struct Iter<'a, K, V> {
-    current: Option<&'a IntervalMapNode<K, V>>,
-    stack: Vec<(&'a Interval<K>, &'a V, Option<&'a IntervalMapNode<K, V>>)>,
+    current: Option<&'a SegmentMapNode<K, V>>,
+    stack: Vec<(&'a Segment<K>, &'a V, Option<&'a SegmentMapNode<K, V>>)>,
 }
 
 impl<'a, K, V> Iterator for Iter<'a, K, V> {
-    type Item = (&'a Interval<K>, &'a V);
+    type Item = (&'a Segment<K>, &'a V);
 
-    fn next(&mut self) -> Option<(&'a Interval<K>, &'a V)> {
+    fn next(&mut self) -> Option<(&'a Segment<K>, &'a V)> {
         while let Some(current) = self.current.take() {
-            self.stack.push((&current.interval, &current.value, (*current.right).as_ref()));
+            self.stack.push((&current.segment, &current.value, (*current.right).as_ref()));
             self.current = (*current.left).as_ref();
         }
-        if let Some((interval, value, right)) = self.stack.pop() {
+        if let Some((segment, value, right)) = self.stack.pop() {
             self.current = right;
-            Some((interval, value))
+            Some((segment, value))
         } else { None }
     }
 }
 
 pub struct IterMut<'a, K, V> {
-    current: Option<&'a mut IntervalMapNode<K, V>>,
-    stack: Vec<(&'a Interval<K>, &'a mut V, Option<&'a mut IntervalMapNode<K, V>>)>,
+    current: Option<&'a mut SegmentMapNode<K, V>>,
+    stack: Vec<(&'a Segment<K>, &'a mut V, Option<&'a mut SegmentMapNode<K, V>>)>,
 }
 
 impl<'a, K, V> Iterator for IterMut<'a, K, V> {
-    type Item = (&'a Interval<K>, &'a mut V);
+    type Item = (&'a Segment<K>, &'a mut V);
 
-    fn next(&mut self) -> Option<(&'a Interval<K>, &'a mut V)> {
+    fn next(&mut self) -> Option<(&'a Segment<K>, &'a mut V)> {
         while let Some(current) = self.current.take() {
-            self.stack.push((&current.interval, &mut current.value, (*current.right).as_mut()));
+            self.stack.push((&current.segment, &mut current.value, (*current.right).as_mut()));
             self.current = (*current.left).as_mut();
         }
-        if let Some((interval, value, right)) = self.stack.pop() {
+        if let Some((segment, value, right)) = self.stack.pop() {
             self.current = right;
-            Some((interval, value))
+            Some((segment, value))
         } else { None }
     }
 }
 
-impl<K: Clone + PartialOrd, V: Clone> Extend<(Interval<K>, V)> for IntervalMap<K, V> {
-    fn extend<I: IntoIterator<Item = (Interval<K>, V)>>(&mut self, iter: I) {
-        for (interval, value) in iter {
-            self.insert(interval, value);
+impl<K: Clone + PartialOrd, V: Clone> Extend<(Segment<K>, V)> for SegmentMap<K, V> {
+    fn extend<I: IntoIterator<Item = (Segment<K>, V)>>(&mut self, iter: I) {
+        for (segment, value) in iter {
+            self.insert(segment, value);
         }
     }
 }
 
-impl<K, V> IntoIterator for IntervalMap<K, V> {
-    type Item = (Interval<K>, V);
+impl<K, V> IntoIterator for SegmentMap<K, V> {
+    type Item = (Segment<K>, V);
     type IntoIter = IntoIter<K, V>;
 
     fn into_iter(self) -> IntoIter<K, V> {
@@ -199,48 +199,48 @@ impl<K, V> IntoIterator for IntervalMap<K, V> {
 }
 
 pub struct IntoIter<K, V> {
-    current: Option<IntervalMapNode<K, V>>,
-    stack: Vec<(Interval<K>, V, Option<IntervalMapNode<K, V>>)>,
+    current: Option<SegmentMapNode<K, V>>,
+    stack: Vec<(Segment<K>, V, Option<SegmentMapNode<K, V>>)>,
 }
 
 impl<K, V> Iterator for IntoIter<K, V> {
-    type Item = (Interval<K>, V);
+    type Item = (Segment<K>, V);
 
-    fn next(&mut self) -> Option<(Interval<K>, V)> {
+    fn next(&mut self) -> Option<(Segment<K>, V)> {
         while let Some(current) = self.current.take() {
-            self.stack.push((current.interval, current.value, *current.right));
+            self.stack.push((current.segment, current.value, *current.right));
             self.current = *current.left;
         }
-        if let Some((interval, value, right)) = self.stack.pop() {
+        if let Some((segment, value, right)) = self.stack.pop() {
             self.current = right;
-            Some((interval, value))
+            Some((segment, value))
         } else { None }
     }
 }
 
 #[macro_export]
-macro_rules! interval_map {
+macro_rules! segment_map {
     ($($x:expr => $y:expr),*) => {{
         #[allow(unused_mut)]
-        let mut temp_interval_map = $crate::IntervalMap::new();
-        $(temp_interval_map.insert($x, $y);)*
-        temp_interval_map
+        let mut temp_segment_map = $crate::SegmentMap::new();
+        $(temp_segment_map.insert($x, $y);)*
+        temp_segment_map
     }}
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        Interval,
-        IntervalMap,
+        Segment,
+        SegmentMap,
     };
 
     #[test]
     fn test_insert_multiple_empty() {
-        let mut interval_map = IntervalMap::new();
-        interval_map.insert(Interval::new(0, 1), 0);
-        interval_map.insert(Interval::new(1, 1), 1);
-        assert!(std::panic::catch_unwind(move || interval_map.insert(Interval::new(1, 1), 2)).is_err());
+        let mut segment_map = SegmentMap::new();
+        segment_map.insert(Segment::new(0, 1), 0);
+        segment_map.insert(Segment::new(1, 1), 1);
+        assert!(std::panic::catch_unwind(move || segment_map.insert(Segment::new(1, 1), 2)).is_err());
     }
 
     #[test]
@@ -296,11 +296,11 @@ mod tests {
                     "                      -> -------------------",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(0, 18),
+                Segment::new(0, 18),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![],
             ), (
@@ -309,14 +309,14 @@ mod tests {
                     "                      -> ---------------[2-)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(0, 15),
+                Segment::new(0, 15),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(15, 18), 2)
+                    (Segment::new(15, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -324,14 +324,14 @@ mod tests {
                     "                      -> ------------[2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(0, 12),
+                Segment::new(0, 12),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -339,15 +339,15 @@ mod tests {
                     "                      -> ---------[1-|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(0, 9),
+                Segment::new(0, 9),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(9, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(9, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -355,15 +355,15 @@ mod tests {
                     "                      -> ------[1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(0, 6),
+                Segment::new(0, 6),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -371,16 +371,16 @@ mod tests {
                     "                      -> ---[0-|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(0, 3),
+                Segment::new(0, 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(3, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(3, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -388,16 +388,16 @@ mod tests {
                     "                      -> [0----|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(0, 0),
+                Segment::new(0, 0),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -405,14 +405,14 @@ mod tests {
                     "                      -> [0-)---------------",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(3, 18),
+                Segment::new(3, 18),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0)
+                    (Segment::new(0, 3), 0)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -420,15 +420,15 @@ mod tests {
                     "                      -> [0-)-----------[2-)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(3, 15),
+                Segment::new(3, 15),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(15, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(15, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -436,15 +436,15 @@ mod tests {
                     "                      -> [0-)--------[2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(3, 12),
+                Segment::new(3, 12),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -452,16 +452,16 @@ mod tests {
                     "                      -> [0-)-----[1-|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(3, 9),
+                Segment::new(3, 9),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(9, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(9, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -469,16 +469,16 @@ mod tests {
                     "                      -> [0-)--[1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(3, 6),
+                Segment::new(3, 6),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -486,17 +486,17 @@ mod tests {
                     "                      -> [0)-[0|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(2, 4),
+                Segment::new(2, 4),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 2), 0),
-                    (Interval::new(4, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 2), 0),
+                    (Segment::new(4, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -504,17 +504,17 @@ mod tests {
                     "                      -> [0-|0-|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(3, 3),
+                Segment::new(3, 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(3, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(3, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -522,14 +522,14 @@ mod tests {
                     "                      -> [0----)------------",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(6, 18),
+                Segment::new(6, 18),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0)
+                    (Segment::new(0, 6), 0)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -537,15 +537,15 @@ mod tests {
                     "                      -> [0----)--------[2-)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(6, 15),
+                Segment::new(6, 15),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(15, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(15, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -553,15 +553,15 @@ mod tests {
                     "                      -> [0----)-----[2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(6, 12),
+                Segment::new(6, 12),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -569,16 +569,16 @@ mod tests {
                     "                      -> [0----)--[1-|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(6, 9),
+                Segment::new(6, 9),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(9, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(9, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -586,16 +586,16 @@ mod tests {
                     "                      -> [0----|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(6, 6),
+                Segment::new(6, 6),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -603,28 +603,28 @@ mod tests {
                     "                      -> [1----|2----)------",
                     "  [1----|2----)------"
                 ),
-                Interval::new(0, 0),
+                Segment::new(0, 0),
                 vec![
-                    (Interval::new(0, 0), 0),
-                    (Interval::new(0, 6), 1),
-                    (Interval::new(6, 12), 2)
+                    (Segment::new(0, 0), 0),
+                    (Segment::new(0, 6), 1),
+                    (Segment::new(6, 12), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 1),
-                    (Interval::new(6, 12), 2)
+                    (Segment::new(0, 6), 1),
+                    (Segment::new(6, 12), 2)
                 ],
             )
 
         ];
-        for (case_description, remove_interval, insert_intervals, expected_intervals) in cases {
+        for (case_description, remove_segment, insert_segments, expected_segments) in cases {
             for (permutation_description, indices) in &permutations {
-                let mut interval_map = IntervalMap::new();
+                let mut segment_map = SegmentMap::new();
                 for &index in indices {
-                    let (insert_interval, insert_value) = insert_intervals[index];
-                    interval_map.insert(insert_interval, insert_value);
+                    let (insert_segment, insert_value) = insert_segments[index];
+                    segment_map.insert(insert_segment, insert_value);
                 }
-                interval_map.remove(&remove_interval);
-                assert_eq!(expected_intervals, interval_map.into_iter().collect::<Vec<_>>(), "\npermutation:\n\n{}\ncase:\n\n{}\n", permutation_description, case_description);
+                segment_map.remove(&remove_segment);
+                assert_eq!(expected_segments, segment_map.into_iter().collect::<Vec<_>>(), "\npermutation:\n\n{}\ncase:\n\n{}\n", permutation_description, case_description);
             }
         }
     }
@@ -706,16 +706,16 @@ mod tests {
                     "                      -> [3----|3----|3----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(0, 18), 3),
+                (Segment::new(0, 18), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 18), 3)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 18), 3)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -723,17 +723,17 @@ mod tests {
                     "                      -> [3----|3----|3-|2-)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(0, 15), 3),
+                (Segment::new(0, 15), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 15), 3),
-                    (Interval::new(15, 18), 2)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 15), 3),
+                    (Segment::new(15, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -741,16 +741,16 @@ mod tests {
                     "                      -> [3----|3----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(0, 12), 3),
+                (Segment::new(0, 12), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -758,17 +758,17 @@ mod tests {
                     "                      -> [3----|3-|1-|2----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(0, 9), 3),
+                (Segment::new(0, 9), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 9), 3),
-                    (Interval::new(9, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 9), 3),
+                    (Segment::new(9, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -776,16 +776,16 @@ mod tests {
                     "                      -> [3----|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(0, 6), 3),
+                (Segment::new(0, 6), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -793,17 +793,17 @@ mod tests {
                     "                      -> [3-|0-|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(0, 3), 3),
+                (Segment::new(0, 3), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 3),
-                    (Interval::new(3, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 3),
+                    (Segment::new(3, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -811,17 +811,17 @@ mod tests {
                     "                      -> [0----|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(0, 0), 3),
+                (Segment::new(0, 0), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 0), 3),
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 0), 3),
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -829,17 +829,17 @@ mod tests {
                     "                      -> [0-|3-|3----|3----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(3, 18), 3),
+                (Segment::new(3, 18), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(3, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 18), 3)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(3, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 18), 3)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -847,18 +847,18 @@ mod tests {
                     "                      -> [0-|3-|3----|3-|2-)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(3, 15), 3),
+                (Segment::new(3, 15), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(3, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 15), 3),
-                    (Interval::new(15, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(3, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 15), 3),
+                    (Segment::new(15, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -866,17 +866,17 @@ mod tests {
                     "                      -> [0-|3-|3----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(3, 12), 3),
+                (Segment::new(3, 12), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(3, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(3, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -884,18 +884,18 @@ mod tests {
                     "                      -> [0-|3-|3-|1-|2----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(3, 9), 3),
+                (Segment::new(3, 9), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(3, 6), 3),
-                    (Interval::new(6, 9), 3),
-                    (Interval::new(9, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(3, 6), 3),
+                    (Segment::new(6, 9), 3),
+                    (Segment::new(9, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -903,17 +903,17 @@ mod tests {
                     "                      -> [0-|3-|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(3, 6), 3),
+                (Segment::new(3, 6), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(3, 6), 3),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(3, 6), 3),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -921,18 +921,18 @@ mod tests {
                     "                      -> [0|3|0|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(2, 4), 3),
+                (Segment::new(2, 4), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 2), 0),
-                    (Interval::new(2, 4), 3),
-                    (Interval::new(4, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 2), 0),
+                    (Segment::new(2, 4), 3),
+                    (Segment::new(4, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -940,18 +940,18 @@ mod tests {
                     "                      -> [0-|0-|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(3, 3), 3),
+                (Segment::new(3, 3), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(3, 3), 3),
-                    (Interval::new(3, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(3, 3), 3),
+                    (Segment::new(3, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -959,16 +959,16 @@ mod tests {
                     "                      -> [0----|3----|3----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(6, 18), 3),
+                (Segment::new(6, 18), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 18), 3)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 18), 3)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -976,17 +976,17 @@ mod tests {
                     "                      -> [0----|3----|3-|2-)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(6, 15), 3),
+                (Segment::new(6, 15), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 15), 3),
-                    (Interval::new(15, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 15), 3),
+                    (Segment::new(15, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -994,16 +994,16 @@ mod tests {
                     "                      -> [0----|3----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(6, 12), 3),
+                (Segment::new(6, 12), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1011,17 +1011,17 @@ mod tests {
                     "                      -> [0----|3-|1-|2----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(6, 9), 3),
+                (Segment::new(6, 9), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 9), 3),
-                    (Interval::new(9, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 9), 3),
+                    (Segment::new(9, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1029,17 +1029,17 @@ mod tests {
                     "                      -> [0----|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                (Interval::new(6, 6), 3),
+                (Segment::new(6, 6), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 6), 3),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 6), 3),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1047,15 +1047,15 @@ mod tests {
                     "                      -> [3----|3----|3----)",
                     "  ------[1----|2----)"
                 ),
-                (Interval::new(0, 18), 3),
+                (Segment::new(0, 18), 3),
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 18), 3)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 18), 3)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1063,16 +1063,16 @@ mod tests {
                     "                      -> [3----|3----|3-|2-)",
                     "  ------[1----|2----)"
                 ),
-                (Interval::new(0, 15), 3),
+                (Segment::new(0, 15), 3),
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 15), 3),
-                    (Interval::new(15, 18), 2)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 15), 3),
+                    (Segment::new(15, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1080,15 +1080,15 @@ mod tests {
                     "                      -> [3----|3----|2----)",
                     "  ------[1----|2----)"
                 ),
-                (Interval::new(0, 12), 3),
+                (Segment::new(0, 12), 3),
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1096,16 +1096,16 @@ mod tests {
                     "                      -> [3----|3-|1-|2----)",
                     "  ------[1----|2----)"
                 ),
-                (Interval::new(0, 9), 3),
+                (Segment::new(0, 9), 3),
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 9), 3),
-                    (Interval::new(9, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 9), 3),
+                    (Segment::new(9, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1113,15 +1113,15 @@ mod tests {
                     "                      -> [3----|1----|2----)",
                     "  ------[1----|2----)"
                 ),
-                (Interval::new(0, 6), 3),
+                (Segment::new(0, 6), 3),
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1129,15 +1129,15 @@ mod tests {
                     "                      -> [3-)--[1----|2----)",
                     "  ------[1----|2----)"
                 ),
-                (Interval::new(0, 3), 3),
+                (Segment::new(0, 3), 3),
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 3),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 3),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1145,15 +1145,15 @@ mod tests {
                     "                      -> |-----[1----|2----)",
                     "  ------[1----|2----)"
                 ),
-                (Interval::new(0, 0), 3),
+                (Segment::new(0, 0), 3),
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 0), 3),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 0), 3),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1161,15 +1161,15 @@ mod tests {
                     "                      -> [3----|3----|3----)",
                     "  [0----)-----[2----)"
                 ),
-                (Interval::new(0, 18), 3),
+                (Segment::new(0, 18), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 18), 3)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 18), 3)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1177,16 +1177,16 @@ mod tests {
                     "                      -> [3----|3----|3-|2-)",
                     "  [0----)-----[2----)"
                 ),
-                (Interval::new(0, 15), 3),
+                (Segment::new(0, 15), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 15), 3),
-                    (Interval::new(15, 18), 2)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 15), 3),
+                    (Segment::new(15, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1194,15 +1194,15 @@ mod tests {
                     "                      -> [3----|3----|2----)",
                     "  [0----)-----[2----)"
                 ),
-                (Interval::new(0, 12), 3),
+                (Segment::new(0, 12), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1210,15 +1210,15 @@ mod tests {
                     "                      -> [3----|3-)--[2----)",
                     "  [0----)-----[2----)"
                 ),
-                (Interval::new(0, 9), 3),
+                (Segment::new(0, 9), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 9), 3),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 9), 3),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1226,16 +1226,16 @@ mod tests {
                     "                      -> [0-|3-|3----|3----)",
                     "  [0----)-----[2----)"
                 ),
-                (Interval::new(3, 18), 3),
+                (Segment::new(3, 18), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(3, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 18), 3)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(3, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 18), 3)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1243,17 +1243,17 @@ mod tests {
                     "                      -> [0-|3-|3----|3-|2-)",
                     "  [0----)-----[2----)"
                 ),
-                (Interval::new(3, 15), 3),
+                (Segment::new(3, 15), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(3, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 15), 3),
-                    (Interval::new(15, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(3, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 15), 3),
+                    (Segment::new(15, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1261,16 +1261,16 @@ mod tests {
                     "                      -> [0-|3-|3----|2----)",
                     "  [0----)-----[2----)"
                 ),
-                (Interval::new(3, 12), 3),
+                (Segment::new(3, 12), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(3, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(3, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1278,16 +1278,16 @@ mod tests {
                     "                      -> [0-|3-|3-)--[2----)",
                     "  [0----)-----[2----)"
                 ),
-                (Interval::new(3, 9), 3),
+                (Segment::new(3, 9), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(3, 6), 3),
-                    (Interval::new(6, 9), 3),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(3, 6), 3),
+                    (Segment::new(6, 9), 3),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1295,15 +1295,15 @@ mod tests {
                     "                      -> [3----|3----|3----)",
                     "  [0----|1----)------"
                 ),
-                (Interval::new(0, 18), 3),
+                (Segment::new(0, 18), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 18), 3)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 18), 3)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1311,15 +1311,15 @@ mod tests {
                     "                      -> [3----|3----|3-)---",
                     "  [0----|1----)------"
                 ),
-                (Interval::new(0, 15), 3),
+                (Segment::new(0, 15), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 15), 3)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 15), 3)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1327,16 +1327,16 @@ mod tests {
                     "                      -> [0-|3-|3----|3----)",
                     "  [0----|1----)------"
                 ),
-                (Interval::new(3, 18), 3),
+                (Segment::new(3, 18), 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(3, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 18), 3)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(3, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 18), 3)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1344,14 +1344,14 @@ mod tests {
                     "                      -> [3----|3----|3----)",
                     "  ------[1----)------"
                 ),
-                (Interval::new(0, 18), 3),
+                (Segment::new(0, 18), 3),
                 vec![
-                    (Interval::new(6, 12), 1)
+                    (Segment::new(6, 12), 1)
                 ],
                 vec![
-                    (Interval::new(0, 6), 3),
-                    (Interval::new(6, 12), 3),
-                    (Interval::new(12, 18), 3)
+                    (Segment::new(0, 6), 3),
+                    (Segment::new(6, 12), 3),
+                    (Segment::new(12, 18), 3)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1359,29 +1359,29 @@ mod tests {
                     "                      -> [1----|2----)------",
                     "  [1----|2----)------"
                 ),
-                (Interval::new(0, 0), 3),
+                (Segment::new(0, 0), 3),
                 vec![
-                    (Interval::new(0, 0), 0),
-                    (Interval::new(0, 6), 1),
-                    (Interval::new(6, 12), 2)
+                    (Segment::new(0, 0), 0),
+                    (Segment::new(0, 6), 1),
+                    (Segment::new(6, 12), 2)
                 ],
                 vec![
-                    (Interval::new(0, 0), 3),
-                    (Interval::new(0, 6), 1),
-                    (Interval::new(6, 12), 2)
+                    (Segment::new(0, 0), 3),
+                    (Segment::new(0, 6), 1),
+                    (Segment::new(6, 12), 2)
                 ],
             )
         ];
-        for (case_description, update_interval, insert_intervals, expected_intervals) in cases {
-            for (permutation_description, indices) in &permutations[insert_intervals.len()] {
-                let mut interval_map = IntervalMap::new();
+        for (case_description, update_segment, insert_segments, expected_segments) in cases {
+            for (permutation_description, indices) in &permutations[insert_segments.len()] {
+                let mut segment_map = SegmentMap::new();
                 for &index in indices {
-                    let (insert_interval, insert_value) = insert_intervals[index];
-                    interval_map.insert(insert_interval, insert_value);
+                    let (insert_segment, insert_value) = insert_segments[index];
+                    segment_map.insert(insert_segment, insert_value);
                 }
-                let (update_interval, update_value) = update_interval;
-                interval_map.update(&update_interval, |_| Some(update_value));
-                assert_eq!(expected_intervals, interval_map.into_iter().collect::<Vec<_>>(), "\npermutation:\n\n{}\ncase:\n\n{}\n", permutation_description, case_description);
+                let (update_segment, update_value) = update_segment;
+                segment_map.update(&update_segment, |_| Some(update_value));
+                assert_eq!(expected_segments, segment_map.into_iter().collect::<Vec<_>>(), "\npermutation:\n\n{}\ncase:\n\n{}\n", permutation_description, case_description);
             }
         }
     }
@@ -1463,11 +1463,11 @@ mod tests {
                     "                      -> -------------------",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(0, 18),
+                Segment::new(0, 18),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![],
             ), (
@@ -1476,14 +1476,14 @@ mod tests {
                     "                      -> ---------------[2-)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(0, 15),
+                Segment::new(0, 15),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(15, 18), 2)
+                    (Segment::new(15, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1491,14 +1491,14 @@ mod tests {
                     "                      -> ------------[2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(0, 12),
+                Segment::new(0, 12),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1506,15 +1506,15 @@ mod tests {
                     "                      -> ---------[1-|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(0, 9),
+                Segment::new(0, 9),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(9, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(9, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1522,15 +1522,15 @@ mod tests {
                     "                      -> ------[1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(0, 6),
+                Segment::new(0, 6),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1538,16 +1538,16 @@ mod tests {
                     "                      -> ---[0-|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(0, 3),
+                Segment::new(0, 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(3, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(3, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1555,16 +1555,16 @@ mod tests {
                     "                      -> [0----|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(0, 0),
+                Segment::new(0, 0),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1572,14 +1572,14 @@ mod tests {
                     "                      -> [0-)---------------",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(3, 18),
+                Segment::new(3, 18),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0)
+                    (Segment::new(0, 3), 0)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1587,15 +1587,15 @@ mod tests {
                     "                      -> [0-)-----------[2-)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(3, 15),
+                Segment::new(3, 15),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(15, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(15, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1603,15 +1603,15 @@ mod tests {
                     "                      -> [0-)--------[2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(3, 12),
+                Segment::new(3, 12),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1619,16 +1619,16 @@ mod tests {
                     "                      -> [0-)-----[1-|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(3, 9),
+                Segment::new(3, 9),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(9, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(9, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1636,16 +1636,16 @@ mod tests {
                     "                      -> [0-)--[1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(3, 6),
+                Segment::new(3, 6),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1653,17 +1653,17 @@ mod tests {
                     "                      -> [0)-[0|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(2, 4),
+                Segment::new(2, 4),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 2), 0),
-                    (Interval::new(4, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 2), 0),
+                    (Segment::new(4, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1671,17 +1671,17 @@ mod tests {
                     "                      -> [0-|0-|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(3, 3),
+                Segment::new(3, 3),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(3, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(3, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1689,14 +1689,14 @@ mod tests {
                     "                      -> [0----)------------",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(6, 18),
+                Segment::new(6, 18),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0)
+                    (Segment::new(0, 6), 0)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1704,15 +1704,15 @@ mod tests {
                     "                      -> [0----)--------[2-)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(6, 15),
+                Segment::new(6, 15),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(15, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(15, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1720,15 +1720,15 @@ mod tests {
                     "                      -> [0----)-----[2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(6, 12),
+                Segment::new(6, 12),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1736,16 +1736,16 @@ mod tests {
                     "                      -> [0----)--[1-|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(6, 9),
+                Segment::new(6, 9),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(9, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(9, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1753,16 +1753,16 @@ mod tests {
                     "                      -> [0----|1----|2----)",
                     "  [0----|1----|2----)"
                 ),
-                Interval::new(6, 6),
+                Segment::new(6, 6),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1770,10 +1770,10 @@ mod tests {
                     "                      -> -------------------",
                     "  ------[1----|2----)"
                 ),
-                Interval::new(0, 18),
+                Segment::new(0, 18),
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![],
             ), (
@@ -1782,13 +1782,13 @@ mod tests {
                     "                      -> ---------------[2-)",
                     "  ------[1----|2----)"
                 ),
-                Interval::new(0, 15),
+                Segment::new(0, 15),
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(15, 18), 2)
+                    (Segment::new(15, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1796,13 +1796,13 @@ mod tests {
                     "                      -> ------------[2----)",
                     "  ------[1----|2----)"
                 ),
-                Interval::new(0, 12),
+                Segment::new(0, 12),
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1810,14 +1810,14 @@ mod tests {
                     "                      -> ---------[1-|2----)",
                     "  ------[1----|2----)"
                 ),
-                Interval::new(0, 9),
+                Segment::new(0, 9),
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(9, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(9, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1825,14 +1825,14 @@ mod tests {
                     "                      -> ------[1----|2----)",
                     "  ------[1----|2----)"
                 ),
-                Interval::new(0, 6),
+                Segment::new(0, 6),
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1840,14 +1840,14 @@ mod tests {
                     "                      -> ------[1----|2----)",
                     "  ------[1----|2----)"
                 ),
-                Interval::new(0, 3),
+                Segment::new(0, 3),
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1855,14 +1855,14 @@ mod tests {
                     "                      -> ------[1----|2----)",
                     "  ------[1----|2----)"
                 ),
-                Interval::new(0, 0),
+                Segment::new(0, 0),
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(6, 12), 1),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(6, 12), 1),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1870,10 +1870,10 @@ mod tests {
                     "                      -> -------------------",
                     "  [0----)-----[2----)"
                 ),
-                Interval::new(0, 18),
+                Segment::new(0, 18),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![],
             ), (
@@ -1882,13 +1882,13 @@ mod tests {
                     "                      -> ---------------[2-)",
                     "  [0----)-----[2----)"
                 ),
-                Interval::new(0, 15),
+                Segment::new(0, 15),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(15, 18), 2)
+                    (Segment::new(15, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1896,13 +1896,13 @@ mod tests {
                     "                      -> ------------[2----)",
                     "  [0----)-----[2----)"
                 ),
-                Interval::new(0, 12),
+                Segment::new(0, 12),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1910,13 +1910,13 @@ mod tests {
                     "                      -> ------------[2----)",
                     "  [0----)-----[2----)"
                 ),
-                Interval::new(0, 9),
+                Segment::new(0, 9),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1924,13 +1924,13 @@ mod tests {
                     "                      -> [0-)---------------",
                     "  [0----)-----[2----)"
                 ),
-                Interval::new(3, 18),
+                Segment::new(3, 18),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0)
+                    (Segment::new(0, 3), 0)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1938,14 +1938,14 @@ mod tests {
                     "                      -> [0-)-----------[2-)",
                     "  [0----)-----[2----)"
                 ),
-                Interval::new(3, 15),
+                Segment::new(3, 15),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(15, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(15, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1953,14 +1953,14 @@ mod tests {
                     "                      -> [0-)--------[2----)",
                     "  [0----)-----[2----)"
                 ),
-                Interval::new(3, 12),
+                Segment::new(3, 12),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1968,14 +1968,14 @@ mod tests {
                     "                      -> [0-)--------[2----)",
                     "  [0----)-----[2----)"
                 ),
-                Interval::new(3, 9),
+                Segment::new(3, 9),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(12, 18), 2)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0),
-                    (Interval::new(12, 18), 2)
+                    (Segment::new(0, 3), 0),
+                    (Segment::new(12, 18), 2)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -1983,10 +1983,10 @@ mod tests {
                     "                      -> -------------------",
                     "  [0----|1----)------"
                 ),
-                Interval::new(0, 18),
+                Segment::new(0, 18),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1)
                 ],
                 vec![],
             ), (
@@ -1995,10 +1995,10 @@ mod tests {
                     "                      -> -------------------",
                     "  [0----|1----)------"
                 ),
-                Interval::new(0, 15),
+                Segment::new(0, 15),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1)
                 ],
                 vec![],
             ), (
@@ -2007,13 +2007,13 @@ mod tests {
                     "                      -> [0-)---------------",
                     "  [0----|1----)------"
                 ),
-                Interval::new(3, 18),
+                Segment::new(3, 18),
                 vec![
-                    (Interval::new(0, 6), 0),
-                    (Interval::new(6, 12), 1)
+                    (Segment::new(0, 6), 0),
+                    (Segment::new(6, 12), 1)
                 ],
                 vec![
-                    (Interval::new(0, 3), 0)
+                    (Segment::new(0, 3), 0)
                 ],
             ), (
                 format!("{}\n{}\n{}\n",
@@ -2021,9 +2021,9 @@ mod tests {
                     "                      -> -------------------",
                     "  ------[1----)------"
                 ),
-                Interval::new(0, 18),
+                Segment::new(0, 18),
                 vec![
-                    (Interval::new(6, 12), 1)
+                    (Segment::new(6, 12), 1)
                 ],
                 vec![],
             ), (
@@ -2032,27 +2032,27 @@ mod tests {
                     "                      -> [1----|2----)------",
                     "  [1----|2----)------"
                 ),
-                Interval::new(0, 0),
+                Segment::new(0, 0),
                 vec![
-                    (Interval::new(0, 0), 0),
-                    (Interval::new(0, 6), 1),
-                    (Interval::new(6, 12), 2)
+                    (Segment::new(0, 0), 0),
+                    (Segment::new(0, 6), 1),
+                    (Segment::new(6, 12), 2)
                 ],
                 vec![
-                    (Interval::new(0, 6), 1),
-                    (Interval::new(6, 12), 2)
+                    (Segment::new(0, 6), 1),
+                    (Segment::new(6, 12), 2)
                 ],
             )
         ];
-        for (case_description, update_interval, insert_intervals, expected_intervals) in cases {
-            for (permutation_description, indices) in &permutations[insert_intervals.len()] {
-                let mut interval_map = IntervalMap::new();
+        for (case_description, update_segment, insert_segments, expected_segments) in cases {
+            for (permutation_description, indices) in &permutations[insert_segments.len()] {
+                let mut segment_map = SegmentMap::new();
                 for &index in indices {
-                    let (insert_interval, insert_value) = insert_intervals[index];
-                    interval_map.insert(insert_interval, insert_value);
+                    let (insert_segment, insert_value) = insert_segments[index];
+                    segment_map.insert(insert_segment, insert_value);
                 }
-                interval_map.update(&update_interval, |_| None);
-                assert_eq!(expected_intervals, interval_map.into_iter().collect::<Vec<_>>(), "\npermutation:\n\n{}\ncase:\n\n{}\n", permutation_description, case_description);
+                segment_map.update(&update_segment, |_| None);
+                assert_eq!(expected_segments, segment_map.into_iter().collect::<Vec<_>>(), "\npermutation:\n\n{}\ncase:\n\n{}\n", permutation_description, case_description);
             }
         }
     }

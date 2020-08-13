@@ -9,5 +9,7 @@ readme = "README.md"
 keywords = ["segment-map", "interval-map", "segment", "interval", "map"]
 categories = ["data-structures"]
 edition = "2018"
+documentation = "https://docs.rs/segment-map/0.1.1/segment_map/"
+homepage = "https://github.com/RobertDurfee/SegmentMap/tree/v0.1.1"
 
 [dependencies]

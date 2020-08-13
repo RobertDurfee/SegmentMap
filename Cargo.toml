@@ -1,14 +1,13 @@
 [package]
 name = "segment-map"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Robert Durfee <rbd@mit.edu>"]
 description = "A self-balancing binary search tree for mapping discrete, disjoint segments to values."
-license-file = "LICENSE"
-repository = "https://github.com/RobertDurfee/SegmentMap"
+license = "MIT"
+repository = "https://github.com/RobertDurfee/SegmentMap/tree/v0.1.1"
 readme = "README.md"
 keywords = ["segment-map", "interval-map", "segment", "interval", "map"]
 categories = ["data-structures"]
 edition = "2018"
 
 [dependencies]
-num = "0.3"

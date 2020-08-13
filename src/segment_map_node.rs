@@ -1,15 +1,18 @@
 use crate::Segment;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub(crate) struct SegmentMapNode<K, V> {
-    pub(crate) segment: Segment<K>,
-    pub(crate) value: V,
-    pub(crate) left: Box<Option<SegmentMapNode<K, V>>>,
-    pub(crate) right: Box<Option<SegmentMapNode<K, V>>>
+pub struct SegmentMapNode<K, V> {
+    pub segment: Segment<K>,
+    pub value: V,
+    pub left: Box<Option<SegmentMapNode<K, V>>>,
+    pub right: Box<Option<SegmentMapNode<K, V>>>
 }
 
-impl<K: PartialOrd, V> SegmentMapNode<K, V> {
-    pub(crate) fn new(segment: Segment<K>, value: V, left: Option<SegmentMapNode<K, V>>, right: Option<SegmentMapNode<K, V>>) -> SegmentMapNode<K, V> {
+impl<K, V> SegmentMapNode<K, V> 
+where
+    K: PartialOrd
+{
+    pub fn new(segment: Segment<K>, value: V, left: Option<SegmentMapNode<K, V>>, right: Option<SegmentMapNode<K, V>>) -> SegmentMapNode<K, V> {
         SegmentMapNode {
             segment,
             value,
@@ -18,11 +21,11 @@ impl<K: PartialOrd, V> SegmentMapNode<K, V> {
         }
     }
 
-    pub(crate) fn min_key(&self) -> &K {
+    pub fn min_key(&self) -> &K {
         self.min_node().segment.lower()
     }
 
-    pub(crate) fn min_node(&self) -> &SegmentMapNode<K, V> {
+    pub fn min_node(&self) -> &SegmentMapNode<K, V> {
         // if left exists, recurse
         if let Some(left) = self.left.as_ref() {
             left.min_node()
@@ -30,7 +33,7 @@ impl<K: PartialOrd, V> SegmentMapNode<K, V> {
         } else { self }
     }
 
-    pub(crate) fn remove_min_node(mut self) -> (Option<SegmentMapNode<K, V>>, SegmentMapNode<K, V>) {
+    pub fn remove_min_node(mut self) -> (Option<SegmentMapNode<K, V>>, SegmentMapNode<K, V>) {
         // if left exists, recurse
         if let Some(left) = self.left.take() {
             let (left, min_node) = left.remove_min_node();
@@ -40,11 +43,11 @@ impl<K: PartialOrd, V> SegmentMapNode<K, V> {
         } else { (None, self) }
     }
 
-    pub(crate) fn max_key(&self) -> &K {
+    pub fn max_key(&self) -> &K {
         self.max_node().segment.upper()
     }
 
-    pub(crate) fn max_node(&self) -> &SegmentMapNode<K, V> {
+    pub fn max_node(&self) -> &SegmentMapNode<K, V> {
         // if right exists, recurse
         if let Some(right) = self.right.as_ref() {
             right.max_node()
@@ -52,15 +55,15 @@ impl<K: PartialOrd, V> SegmentMapNode<K, V> {
         } else { self }
     }
 
-    pub(crate) fn span(&self) -> Segment<&K> {
+    pub fn span(&self) -> Segment<&K> {
         Segment::new(self.min_key(), self.max_key())
     }
 
-    pub(crate) fn get(&self, key: &K) -> Option<&V> {
+    pub fn get(&self, key: &K) -> Option<&V> {
         self.get_entry(key).map(|(_, v)| v)
     }
 
-    pub(crate) fn get_entry(&self, key: &K) -> Option<(&Segment<K>, &V)> {
+    pub fn get_entry(&self, key: &K) -> Option<(&Segment<K>, &V)> {
         // if self segment contains key
         if self.segment.contains(key) {
             Some((&self.segment, &self.value))
@@ -81,7 +84,7 @@ impl<K: PartialOrd, V> SegmentMapNode<K, V> {
         }
     }
 
-    pub(crate) fn insert(&mut self, segment: Segment<K>, value: V) {
+    pub fn insert(&mut self, segment: Segment<K>, value: V) {
         // if the segments perfectly overlap (this prevents inserting duplicate empty segments)
         if (segment.lower() == self.segment.lower()) && (segment.upper() == self.segment.upper()) {
             panic!("segments must not overlap");
@@ -110,8 +113,12 @@ impl<K: PartialOrd, V> SegmentMapNode<K, V> {
     }
 }
 
-impl<K: Clone + PartialOrd, V: Clone> SegmentMapNode<K, V> {
-    pub(crate) fn remove(mut self, segment: &Segment<K>) -> Option<SegmentMapNode<K, V>> {
+impl<K, V> SegmentMapNode<K, V> 
+where
+    K: Clone + PartialOrd,
+    V: Clone,
+{
+    pub fn remove(mut self, segment: &Segment<K>) -> Option<SegmentMapNode<K, V>> {
         // empty segments can be removed
         if segment.is_empty() {
             // if empty segment is enclosed by self segment, (potentially) split the segment
@@ -296,14 +303,14 @@ impl<K: Clone + PartialOrd, V: Clone> SegmentMapNode<K, V> {
         }
     }
 
-    pub(crate) fn update<F>(self, segment: &Segment<K>, value: F) -> Option<SegmentMapNode<K, V>>
+    pub fn update<F>(self, segment: &Segment<K>, value: F) -> Option<SegmentMapNode<K, V>>
     where
         F: Fn(Option<V>) -> Option<V> + Clone
     {
         self.update_entry(segment, |_, v| value(v))
     }
 
-    pub(crate) fn update_entry<F>(mut self, segment: &Segment<K>, value: F) -> Option<SegmentMapNode<K, V>>
+    pub fn update_entry<F>(mut self, segment: &Segment<K>, value: F) -> Option<SegmentMapNode<K, V>>
     where
         F: Fn(&Segment<K>, Option<V>) -> Option<V> + Clone
     {

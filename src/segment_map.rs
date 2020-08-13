@@ -8,7 +8,10 @@ pub struct SegmentMap<K, V> {
     root: Option<SegmentMapNode<K, V>>,
 }
 
-impl<K: PartialOrd, V> SegmentMap<K, V> {
+impl<K, V> SegmentMap<K, V> 
+where
+    K: PartialOrd
+{
     pub fn new() -> SegmentMap<K, V> {
         SegmentMap { root: None }
     }
@@ -72,7 +75,11 @@ impl<K: PartialOrd, V> SegmentMap<K, V> {
     }
 }
 
-impl<K: Clone + PartialOrd, V: Clone> SegmentMap<K, V> {
+impl<K, V> SegmentMap<K, V> 
+where
+    K: Clone + PartialOrd,
+    V: Clone,
+{
     pub fn remove(&mut self, segment: &Segment<K>) {
         if let Some(root) = self.root.take() {
             self.root = root.remove(segment);
@@ -178,8 +185,15 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     }
 }
 
-impl<K: Clone + PartialOrd, V: Clone> Extend<(Segment<K>, V)> for SegmentMap<K, V> {
-    fn extend<I: IntoIterator<Item = (Segment<K>, V)>>(&mut self, iter: I) {
+impl<K, V> Extend<(Segment<K>, V)> for SegmentMap<K, V> 
+where
+    K: Clone + PartialOrd,
+    V: Clone,
+{
+    fn extend<I>(&mut self, iter: I) 
+    where
+        I: IntoIterator<Item = (Segment<K>, V)>
+    {
         for (segment, value) in iter {
             self.insert(segment, value);
         }

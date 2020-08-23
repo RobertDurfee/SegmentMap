@@ -81,19 +81,19 @@ where
     K: PartialOrd + Next
 {
     pub fn singleton(value: K) -> Segment<K> {
-        Segment { lower: value.clone(), upper: value.next() }
+        Segment { lower: value.clone(), upper: value.next_unchecked() }
     }
 
     pub fn open(lower: K, upper: K) -> Segment<K> {
-        Segment { lower: lower.next(), upper }
+        Segment { lower: lower.next_unchecked(), upper }
     }
 
     pub fn closed(lower: K, upper: K) -> Segment<K> {
-        Segment { lower, upper: upper.next() }
+        Segment { lower, upper: upper.next_unchecked() }
     }
 
     pub fn open_closed(lower: K, upper: K) -> Segment<K> {
-        Segment { lower: lower.next(), upper: upper.next() }
+        Segment { lower: lower.next_unchecked(), upper: upper.next_unchecked() }
     }
 }
 
@@ -102,11 +102,11 @@ where
     K: Bounded + PartialOrd + Next
 {
     pub fn at_most(value: K) -> Segment<K> {
-        Segment { lower: K::min(), upper: value.next() }
+        Segment { lower: K::min(), upper: value.next_unchecked() }
     }
 
     pub fn greater_than(value: K) -> Segment<K> {
-        Segment { lower: value.next(), upper: K::max() }
+        Segment { lower: value.next_unchecked(), upper: K::max() }
     }
 }
 
